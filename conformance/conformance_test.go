@@ -52,6 +52,9 @@ func TestConformance(t *testing.T) {
 		GatewayClassName: *gatewayClassName,
 		Debug:            *showDebug,
 		Cleanup:          *shouldCleanup,
+		ExtendedSupport: []suite.ConformanceTestSupport{
+			suite.SupportReferencePolicy,
+		},
 	})
 	cSuite.Setup(t)
 	cSuite.Run(t, tests.ConformanceTests)
