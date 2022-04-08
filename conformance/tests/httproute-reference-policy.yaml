@@ -20,7 +20,8 @@ metadata:
   namespace: gateway-conformance-infra
 spec:
   parentRefs:
-  - name: same-namespace
+  - name: all-namespaces
+    namespace: gateway-conformance-infra
   rules:
   - backendRefs:
     - name: web-backend

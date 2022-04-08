@@ -41,7 +41,7 @@ var HTTPRouteReferencePolicy = suite.ConformanceTest{
 		}
 
 		routeNN := types.NamespacedName{Name: "reference-policy", Namespace: "gateway-conformance-infra"}
-		gwNN := types.NamespacedName{Name: "same-namespace", Namespace: "gateway-conformance-infra"}
+		gwNN := types.NamespacedName{Name: "all-namespaces", Namespace: "gateway-conformance-infra"}
 		gwAddr := kubernetes.GatewayAndHTTPRoutesMustBeReady(t, s.Client, s.ControllerName, gwNN, routeNN)
 
 		t.Run("Simple HTTP request should reach web-backend", func(t *testing.T) {
