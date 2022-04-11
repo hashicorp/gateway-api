@@ -19,43 +19,44 @@ package suite
 import (
 	"testing"
 
+	"golang.org/x/exp/slices"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"sigs.k8s.io/gateway-api/conformance/utils/kubernetes"
 	"sigs.k8s.io/gateway-api/conformance/utils/roundtripper"
 )
 
-// ConformanceTestSupport is a specific subset of extended support for opting in to
-// additional conformance tests.
-type ConformanceTestSupport string
+// SupportedFeature allows opting in to additional conformance tests at an
+// individual feature granularity.
+type SupportedFeature string
 
 const (
-	// This conformance test option indicates support for the ReferencePolicy object.
-	SupportReferencePolicy ConformanceTestSupport = "ReferencePolicy"
+	// This option indicates support for the ReferencePolicy object.
+	SupportReferencePolicy SupportedFeature = "ReferencePolicy"
 )
 
 // ConformanceTestSuite defines the test suite used to run Gateway API
 // conformance tests.
 type ConformanceTestSuite struct {
-	Client           client.Client
-	RoundTripper     roundtripper.RoundTripper
-	GatewayClassName string
-	ControllerName   string
-	Debug            bool
-	Cleanup          bool
-	BaseManifests    string
-	ExtendedSupport  []ConformanceTestSupport
+	Client            client.Client
+	RoundTripper      roundtripper.RoundTripper
+	GatewayClassName  string
+	ControllerName    string
+	Debug             bool
+	Cleanup           bool
+	BaseManifests     string
+	SupportedFeatures []SupportedFeature
 }
 
 // Options can be used to initialize a ConformanceTestSuite.
 type Options struct {
-	Client           client.Client
-	GatewayClassName string
-	Debug            bool
-	Cleanup          bool
-	RoundTripper     roundtripper.RoundTripper
-	BaseManifests    string
-	ExtendedSupport  []ConformanceTestSupport
+	Client            client.Client
+	GatewayClassName  string
+	Debug             bool
+	Cleanup           bool
+	RoundTripper      roundtripper.RoundTripper
+	BaseManifests     string
+	SupportedFeatures []SupportedFeature
 }
 
 // New returns a new ConformanceTestSuite.
@@ -66,13 +67,13 @@ func New(s Options) *ConformanceTestSuite {
 	}
 
 	suite := &ConformanceTestSuite{
-		Client:           s.Client,
-		RoundTripper:     roundTripper,
-		GatewayClassName: s.GatewayClassName,
-		Debug:            s.Debug,
-		Cleanup:          s.Cleanup,
-		BaseManifests:    s.BaseManifests,
-		ExtendedSupport:  s.ExtendedSupport,
+		Client:            s.Client,
+		RoundTripper:      roundTripper,
+		GatewayClassName:  s.GatewayClassName,
+		Debug:             s.Debug,
+		Cleanup:           s.Cleanup,
+		BaseManifests:     s.BaseManifests,
+		SupportedFeatures: s.SupportedFeatures,
 	}
 
 	// apply defaults
@@ -114,6 +115,7 @@ func (suite *ConformanceTestSuite) Run(t *testing.T, tests []ConformanceTest) {
 type ConformanceTest struct {
 	ShortName   string
 	Description string
+	Features    []SupportedFeature
 	Manifests   []string
 	Slow        bool
 	Parallel    bool
@@ -126,6 +128,15 @@ func (test *ConformanceTest) Run(t *testing.T, suite *ConformanceTestSuite) {
 	if test.Parallel {
 		t.Parallel()
 	}
+
+	// Check that all features excerised by the test have been opted into by
+	// the suite.
+	for feature := range test.Features {
+		if !slices.Contains(suite.SupportedFeatures, feature) {
+			t.Skip("Skipping %s: suite does not support %s", test.ShortName, feature)
+		}
+	}
+
 	for _, manifestLocation := range test.Manifests {
 		t.Logf("Applying %s", manifestLocation)
 		kubernetes.MustApplyWithCleanup(t, suite.Client, manifestLocation, suite.GatewayClassName, true)
