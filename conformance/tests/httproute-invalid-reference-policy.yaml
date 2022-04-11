@@ -21,7 +21,6 @@ metadata:
 spec:
   parentRefs:
   - name: same-namespace
-    namespace: gateway-conformance-infra
   rules:
   - backendRefs:
     - name: app-backend-v1
