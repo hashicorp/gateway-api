@@ -52,7 +52,7 @@ func TestConformance(t *testing.T) {
 		GatewayClassName: *gatewayClassName,
 		Debug:            *showDebug,
 		Cleanup:          *shouldCleanup,
-		ExtendedSupport: []suite.ConformanceTestSupport{
+		SupportedFeatures: []suite.SupportedFeature{
 			suite.SupportReferencePolicy,
 		},
 	})
