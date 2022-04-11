@@ -137,9 +137,7 @@ func ExpectResponse(t *testing.T, cReq *roundtripper.CapturedRequest, cRes *roun
 	if cRes.StatusCode == 200 {
 		assert.Equal(t, expected.Request.Path, cReq.Path, "expected path to be %s, got %s", expected.Request.Path, cReq.Path)
 		assert.Equal(t, expected.Request.Method, cReq.Method, "expected method to be %s, got %s", expected.Request.Method, cReq.Method)
-		if !assert.Equal(t, expected.Namespace, cReq.Namespace, "expected namespace to be %s, got %s", expected.Namespace, cReq.Namespace) {
-			t.Logf("Something's not right here %#v", cReq)
-		}
+		assert.Equal(t, expected.Namespace, cReq.Namespace, "expected namespace to be %s, got %s", expected.Namespace, cReq.Namespace)
 		if expected.Request.Headers != nil {
 			if cReq.Headers == nil {
 				t.Error("No headers captured")
