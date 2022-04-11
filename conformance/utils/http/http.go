@@ -63,7 +63,7 @@ type ExpectedRequest struct {
 
 // maxTimeToConsistency is the maximum time that WaitForConsistency will wait for
 // requiredConsecutiveSuccesses requests to succeed in a row before failing the test.
-const maxTimeToConsistency = 30 * time.Second
+const maxTimeToConsistency = 600 * time.Second
 
 // requiredConsecutiveSuccesses is the number of requests that must succeed in a row
 // for MakeRequestAndExpectEventuallyConsistentResponse to consider the response "consistent"
