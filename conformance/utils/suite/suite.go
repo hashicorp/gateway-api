@@ -26,6 +26,15 @@ import (
 	"sigs.k8s.io/gateway-api/conformance/utils/roundtripper"
 )
 
+// ExemptFeature allows opting out of core conformance tests at an
+// individual feature granularity.
+type ExemptFeature string
+
+const (
+	// This option indicates support for the ReferencePolicy object.
+	ExemptReferencePolicy ExemptFeature = "ReferencePolicy"
+)
+
 // SupportedFeature allows opting in to additional conformance tests at an
 // individual feature granularity.
 type SupportedFeature string
@@ -45,6 +54,7 @@ type ConformanceTestSuite struct {
 	Debug             bool
 	Cleanup           bool
 	BaseManifests     string
+	ExemptFeatures    []ExemptFeature
 	SupportedFeatures []SupportedFeature
 }
 
@@ -56,6 +66,7 @@ type Options struct {
 	Cleanup           bool
 	RoundTripper      roundtripper.RoundTripper
 	BaseManifests     string
+	ExemptFeatures    []ExemptFeature
 	SupportedFeatures []SupportedFeature
 }
 
@@ -73,6 +84,7 @@ func New(s Options) *ConformanceTestSuite {
 		Debug:             s.Debug,
 		Cleanup:           s.Cleanup,
 		BaseManifests:     s.BaseManifests,
+		ExemptFeatures:    s.ExemptFeatures,
 		SupportedFeatures: s.SupportedFeatures,
 	}
 
@@ -115,6 +127,7 @@ func (suite *ConformanceTestSuite) Run(t *testing.T, tests []ConformanceTest) {
 type ConformanceTest struct {
 	ShortName   string
 	Description string
+	Exemptions  []ExemptFeature
 	Features    []SupportedFeature
 	Manifests   []string
 	Slow        bool
@@ -134,6 +147,14 @@ func (test *ConformanceTest) Run(t *testing.T, suite *ConformanceTestSuite) {
 	for _, feature := range test.Features {
 		if !slices.Contains(suite.SupportedFeatures, feature) {
 			t.Skip("Skipping %s: suite does not support %s", test.ShortName, feature)
+		}
+	}
+
+	// Check that no features excerised by the test have been opted out of by
+	// the suite.
+	for _, feature := range test.Exemptions {
+		if !slices.Contains(suite.ExemptFeatures, feature) {
+			t.Skip("Skipping %s: suite exempts %s", test.ShortName, feature)
 		}
 	}
 
