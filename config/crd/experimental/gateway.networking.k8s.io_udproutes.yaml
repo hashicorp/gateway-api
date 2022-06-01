@@ -101,25 +101,25 @@ spec:
                     port:
                       description: "Port is the network port this Route targets. It
                         can be interpreted differently based on the type of parent
-                        resource: \n * Gateway: All listeners listening on the specified
-                        port that also support this kind of Route(and select this
-                        Route). It's not recommended to set `Port` unless the networking
-                        behaviors specified in a Route must apply to a specific port
-                        as opposed to a listener(s) whose port(s) may be changed.
-                        When both Port and SectionName are specified, the name and
-                        port of the selected listener must match both specified values.
-                        \n Implementations MAY choose to support other parent resources.
-                        Implementations supporting other types of parent resources
-                        MUST clearly document how/if Port is interpreted. \n For the
-                        purpose of status, an attachment is considered successful
-                        as long as the parent resource accepts it partially. For example,
-                        Gateway listeners can restrict which Routes can attach to
-                        them by Route kind, namespace, or hostname. If 1 of 2 Gateway
-                        listeners accept attachment from the referencing Route, the
-                        Route MUST be considered successfully attached. If no Gateway
-                        listeners accept attachment from this Route, the Route MUST
-                        be considered detached from the Gateway. \n Support: Extended
-                        \n <gateway:experimental>"
+                        resource. \n When the parent resource is a Gateway, this targets
+                        all listeners listening on the specified port that also support
+                        this kind of Route(and select this Route). It's not recommended
+                        to set `Port` unless the networking behaviors specified in
+                        a Route must apply to a specific port as opposed to a listener(s)
+                        whose port(s) may be changed. When both Port and SectionName
+                        are specified, the name and port of the selected listener
+                        must match both specified values. \n Implementations MAY choose
+                        to support other parent resources. Implementations supporting
+                        other types of parent resources MUST clearly document how/if
+                        Port is interpreted. \n For the purpose of status, an attachment
+                        is considered successful as long as the parent resource accepts
+                        it partially. For example, Gateway listeners can restrict
+                        which Routes can attach to them by Route kind, namespace,
+                        or hostname. If 1 of 2 Gateway listeners accept attachment
+                        from the referencing Route, the Route MUST be considered successfully
+                        attached. If no Gateway listeners accept attachment from this
+                        Route, the Route MUST be considered detached from the Gateway.
+                        \n Support: Extended \n <gateway:experimental>"
                       format: int32
                       maximum: 65535
                       minimum: 1
@@ -243,94 +243,6 @@ spec:
                         type: object
                       maxItems: 16
                       minItems: 1
-                      type: array
-                    matches:
-                      description: "Matches add rules for filtering traffic to backends
-                        based on addresses. \n  <gateway:experimental>"
-                      items:
-                        description: AddressRouteMatches defines AddressMatch rules
-                          for inbound traffic according to source and/or destination
-                          address of a packet or connection.
-                        properties:
-                          destinationAddresses:
-                            description: "DestinationAddresses indicates the destination
-                              network addresses which are valid for routing traffic.
-                              \n Support: Extended"
-                            items:
-                              description: AddressMatch defines matching rules for
-                                network addresses by type.
-                              properties:
-                                type:
-                                  default: IPAddress
-                                  description: "Type of the address, either IPAddress
-                                    or NamedAddress. \n If NamedAddress is used this
-                                    is a custom and specific value for each implementation
-                                    to handle (and add validation for) according to
-                                    their own needs. \n For IPAddress the implementor
-                                    may expect either IPv4 or IPv6. \n Support: Core
-                                    (IPAddress) Support: Custom (NamedAddress)"
-                                  enum:
-                                  - IPAddress
-                                  - NamedAddress
-                                  type: string
-                                value:
-                                  description: "Value of the address. The validity
-                                    of the values will depend on the type and support
-                                    by the controller. \n If implementations support
-                                    proxy-protocol (see: https://www.haproxy.org/download/1.8/doc/proxy-protocol.txt)
-                                    they must respect the connection metadata from
-                                    proxy-protocol in the match logic implemented
-                                    for these address values. \n Examples: `1.2.3.4`,
-                                    `128::1`, `my-named-address`. \n Support: Core"
-                                  maxLength: 253
-                                  minLength: 1
-                                  type: string
-                              required:
-                              - value
-                              type: object
-                            type: array
-                          sourceAddresses:
-                            description: "SourceAddresses indicates the originating
-                              (source) network addresses which are valid for routing
-                              traffic. \n Support: Extended"
-                            items:
-                              description: AddressMatch defines matching rules for
-                                network addresses by type.
-                              properties:
-                                type:
-                                  default: IPAddress
-                                  description: "Type of the address, either IPAddress
-                                    or NamedAddress. \n If NamedAddress is used this
-                                    is a custom and specific value for each implementation
-                                    to handle (and add validation for) according to
-                                    their own needs. \n For IPAddress the implementor
-                                    may expect either IPv4 or IPv6. \n Support: Core
-                                    (IPAddress) Support: Custom (NamedAddress)"
-                                  enum:
-                                  - IPAddress
-                                  - NamedAddress
-                                  type: string
-                                value:
-                                  description: "Value of the address. The validity
-                                    of the values will depend on the type and support
-                                    by the controller. \n If implementations support
-                                    proxy-protocol (see: https://www.haproxy.org/download/1.8/doc/proxy-protocol.txt)
-                                    they must respect the connection metadata from
-                                    proxy-protocol in the match logic implemented
-                                    for these address values. \n Examples: `1.2.3.4`,
-                                    `128::1`, `my-named-address`. \n Support: Core"
-                                  maxLength: 253
-                                  minLength: 1
-                                  type: string
-                              required:
-                              - value
-                              type: object
-                            type: array
-                        required:
-                        - destinationAddresses
-                        - sourceAddresses
-                        type: object
-                      maxItems: 16
                       type: array
                   type: object
                 maxItems: 16
@@ -504,24 +416,25 @@ spec:
                         port:
                           description: "Port is the network port this Route targets.
                             It can be interpreted differently based on the type of
-                            parent resource: \n * Gateway: All listeners listening
-                            on the specified port that also support this kind of Route(and
-                            select this Route). It's not recommended to set `Port`
-                            unless the networking behaviors specified in a Route must
-                            apply to a specific port as opposed to a listener(s) whose
-                            port(s) may be changed. When both Port and SectionName
-                            are specified, the name and port of the selected listener
-                            must match both specified values. \n Implementations MAY
-                            choose to support other parent resources. Implementations
-                            supporting other types of parent resources MUST clearly
-                            document how/if Port is interpreted. \n For the purpose
-                            of status, an attachment is considered successful as long
-                            as the parent resource accepts it partially. For example,
-                            Gateway listeners can restrict which Routes can attach
-                            to them by Route kind, namespace, or hostname. If 1 of
-                            2 Gateway listeners accept attachment from the referencing
-                            Route, the Route MUST be considered successfully attached.
-                            If no Gateway listeners accept attachment from this Route,
+                            parent resource. \n When the parent resource is a Gateway,
+                            this targets all listeners listening on the specified
+                            port that also support this kind of Route(and select this
+                            Route). It's not recommended to set `Port` unless the
+                            networking behaviors specified in a Route must apply to
+                            a specific port as opposed to a listener(s) whose port(s)
+                            may be changed. When both Port and SectionName are specified,
+                            the name and port of the selected listener must match
+                            both specified values. \n Implementations MAY choose to
+                            support other parent resources. Implementations supporting
+                            other types of parent resources MUST clearly document
+                            how/if Port is interpreted. \n For the purpose of status,
+                            an attachment is considered successful as long as the
+                            parent resource accepts it partially. For example, Gateway
+                            listeners can restrict which Routes can attach to them
+                            by Route kind, namespace, or hostname. If 1 of 2 Gateway
+                            listeners accept attachment from the referencing Route,
+                            the Route MUST be considered successfully attached. If
+                            no Gateway listeners accept attachment from this Route,
                             the Route MUST be considered detached from the Gateway.
                             \n Support: Extended \n <gateway:experimental>"
                           format: int32

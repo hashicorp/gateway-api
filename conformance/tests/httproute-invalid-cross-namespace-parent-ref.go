@@ -19,6 +19,7 @@ package tests
 import (
 	"context"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/require"
 	"k8s.io/apimachinery/pkg/types"
@@ -40,28 +41,30 @@ var HTTPRouteInvalidCrossNamespaceParentRef = suite.ConformanceTest{
 		routeName := types.NamespacedName{Name: "invalid-cross-namespace-parent-ref", Namespace: "gateway-conformance-web-backend"}
 		gwName := types.NamespacedName{Name: "same-namespace", Namespace: "gateway-conformance-infra"}
 
-		// TODO: Determine if this is actually what we want. It is likely
-		// preferable to have status set with some kind of warning/error message
-		// but that is also unlikely to be universally achievable.
 		t.Run("Route should not have Parents set in status", func(t *testing.T) {
-			parents := []v1alpha2.RouteParentStatus{}
-			kubernetes.HTTPRouteMustHaveParents(t, suite.Client, routeName, parents, true, 60)
+			kubernetes.HTTPRouteMustHaveNoAcceptedParents(t, suite.Client, routeName, 60)
 		})
 
 		t.Run("Gateway should have 0 Routes attached", func(t *testing.T) {
-			gw := &v1alpha2.Gateway{}
-			err := suite.Client.Get(context.TODO(), gwName, gw)
-			require.NoError(t, err, "error fetching Gateway")
-			// There are two valid ways to represent this:
-			// 1. No listeners in status
-			// 2. One listener in status with 0 attached routes
-			if len(gw.Status.Listeners) == 0 {
-				// No listeners in status.
-			} else if len(gw.Status.Listeners) == 1 {
-				require.Equal(t, int32(0), gw.Status.Listeners[0].AttachedRoutes)
-			} else {
-				t.Errorf("Expected no more than 1 listener in status, got %d", len(gw.Status.Listeners))
-			}
+			require.Eventually(t, func() bool {
+				gw := &v1alpha2.Gateway{}
+				if err := suite.Client.Get(context.TODO(), gwName, gw); err != nil {
+					t.Logf("error fetching gateway: %v", err)
+					return false
+				}
+
+				// There are two valid ways to represent this:
+				// 1. No listeners in status
+				// 2. One listener in status with 0 attached routes
+				if len(gw.Status.Listeners) == 0 {
+					// No listeners in status.
+					return true
+				} else if len(gw.Status.Listeners) == 1 {
+					// Listener with no attached routes
+					return gw.Status.Listeners[0].AttachedRoutes == 0
+				}
+				return false
+			}, time.Second*15, time.Second, "Expected no attached routes")
 		})
 	},
 }

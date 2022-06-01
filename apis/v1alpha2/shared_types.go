@@ -84,15 +84,15 @@ type ParentReference struct {
 	SectionName *SectionName `json:"sectionName,omitempty"`
 
 	// Port is the network port this Route targets. It can be interpreted
-	// differently based on the type of parent resource:
+	// differently based on the type of parent resource.
 	//
-	// * Gateway: All listeners listening on the specified port that also
-	// support this kind of Route(and select this Route). It's not
-	// recommended to set `Port` unless the networking behaviors specified
-	// in a Route must apply to a specific port as opposed to a listener(s)
-	// whose port(s) may be changed. When both Port and SectionName are
-	// specified, the name and port of the selected listener must match both
-	// specified values.
+	// When the parent resource is a Gateway, this targets all listeners
+	// listening on the specified port that also support this kind of Route(and
+	// select this Route). It's not recommended to set `Port` unless the
+	// networking behaviors specified in a Route must apply to a specific port
+	// as opposed to a listener(s) whose port(s) may be changed. When both Port
+	// and SectionName are specified, the name and port of the selected listener
+	// must match both specified values.
 	//
 	// Implementations MAY choose to support other parent resources.
 	// Implementations supporting other types of parent resources MUST clearly
@@ -193,6 +193,11 @@ const (
 	//
 	// * "Accepted"
 	//
+	// Possible reasons for this condition to be False are:
+	//
+	// * "NotAllowedByListeners"
+	// * "NoMatchingListenerHostname"
+	//
 	// Controllers may raise this condition with other reasons,
 	// but should prefer to use the reasons listed above to improve
 	// interoperability.
@@ -201,6 +206,15 @@ const (
 	// This reason is used with the "Accepted" condition when the Route has been
 	// accepted by the Gateway.
 	RouteReasonAccepted RouteConditionReason = "Accepted"
+
+	// This reason is used with the "Accepted" condition when the route has not
+	// been accepted by a Gateway because the Gateway has no Listener whose
+	// allowedRoutes criteria permit the route
+	RouteReasonNotAllowedByListeners RouteConditionReason = "NotAllowedByListeners"
+
+	// This reason is used with the "Accepted" condition when the Gateway has no
+	// compatible Listeners whose Hostname matches the route
+	RouteReasonNoMatchingListenerHostname RouteConditionReason = "NoMatchingListenerHostname"
 
 	// This condition indicates whether the controller was able to resolve all
 	// the object references for the Route.
@@ -464,57 +478,6 @@ type AnnotationKey string
 // +kubebuilder:validation:MinLength=0
 // +kubebuilder:validation:MaxLength=4096
 type AnnotationValue string
-
-// AddressRouteMatches defines AddressMatch rules for inbound traffic according to
-// source and/or destination address of a packet or connection.
-type AddressRouteMatches struct {
-	// SourceAddresses indicates the originating (source) network
-	// addresses which are valid for routing traffic.
-	//
-	// Support: Extended
-	SourceAddresses []AddressMatch `json:"sourceAddresses"`
-
-	// DestinationAddresses indicates the destination network addresses
-	// which are valid for routing traffic.
-	//
-	// Support: Extended
-	DestinationAddresses []AddressMatch `json:"destinationAddresses"`
-}
-
-// AddressMatch defines matching rules for network addresses by type.
-type AddressMatch struct {
-	// Type of the address, either IPAddress or NamedAddress.
-	//
-	// If NamedAddress is used this is a custom and specific value for each
-	// implementation to handle (and add validation for) according to their
-	// own needs.
-	//
-	// For IPAddress the implementor may expect either IPv4 or IPv6.
-	//
-	// Support: Core (IPAddress)
-	// Support: Custom (NamedAddress)
-	//
-	// +optional
-	// +kubebuilder:validation:Enum=IPAddress;NamedAddress
-	// +kubebuilder:default=IPAddress
-	Type *AddressType `json:"type,omitempty"`
-
-	// Value of the address. The validity of the values will depend
-	// on the type and support by the controller.
-	//
-	// If implementations support proxy-protocol (see:
-	// https://www.haproxy.org/download/1.8/doc/proxy-protocol.txt) they
-	// must respect the connection metadata from proxy-protocol
-	// in the match logic implemented for these address values.
-	//
-	// Examples: `1.2.3.4`, `128::1`, `my-named-address`.
-	//
-	// Support: Core
-	//
-	// +kubebuilder:validation:MinLength=1
-	// +kubebuilder:validation:MaxLength=253
-	Value string `json:"value"`
-}
 
 // AddressType defines how a network address is represented as a text string.
 type AddressType string
