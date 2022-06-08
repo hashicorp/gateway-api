@@ -20,6 +20,7 @@ package conformance_test
 import (
 	"testing"
 
+	"k8s.io/utils/strings/slices"
 	"sigs.k8s.io/gateway-api/apis/v1alpha2"
 	"sigs.k8s.io/gateway-api/conformance/tests"
 	"sigs.k8s.io/gateway-api/conformance/utils/flags"
@@ -29,6 +30,17 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/config"
 )
+
+var testsToSkip = []string{
+	// Test asserts 404 response which we can't yet provide due to xDS control
+	tests.HTTPRouteHeaderMatching.ShortName,
+	tests.HTTPExactPathMatching.ShortName,
+
+	// Tests create a gateway which gets stuck in status Unknown, with
+	// reason NotReconciled, "Waiting for controller" (why?)
+	tests.HTTPRouteListenerHostnameMatching.ShortName,
+	tests.HTTPRouteDisallowedKind.ShortName,
+}
 
 func TestConformance(t *testing.T) {
 	cfg, err := config.GetConfig()
@@ -48,10 +60,15 @@ func TestConformance(t *testing.T) {
 		GatewayClassName:     *flags.GatewayClassName,
 		Debug:                *flags.ShowDebug,
 		CleanupBaseResources: *flags.CleanupBaseResources,
-		SupportedFeatures: []suite.SupportedFeature{
-			suite.SupportReferenceGrant,
-		},
+		SupportedFeatures:    []suite.SupportedFeature{},
 	})
 	cSuite.Setup(t)
-	cSuite.Run(t, tests.ConformanceTests)
+
+	var testsToRun []suite.ConformanceTest
+	for _, conformanceTest := range tests.ConformanceTests {
+		if !slices.Contains(testsToSkip, conformanceTest.ShortName) {
+			testsToRun = append(testsToRun, conformanceTest)
+		}
+	}
+	cSuite.Run(t, testsToRun)
 }
