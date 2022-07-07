@@ -38,25 +38,25 @@ var HTTPExactPathMatching = suite.ConformanceTest{
 		ns := "gateway-conformance-infra"
 		routeNN := types.NamespacedName{Name: "exact-matching", Namespace: ns}
 		gwNN := types.NamespacedName{Name: "same-namespace", Namespace: ns}
-		gwAddr := kubernetes.GatewayAndHTTPRoutesMustBeReady(t, suite.Client, suite.ControllerName, gwNN, routeNN)
+		gwAddr := kubernetes.GatewayAndHTTPRoutesMustBeReady(t, suite.Client, suite.ControllerName, kubernetes.NewGatewayRef(gwNN), routeNN)
 
 		testCases := []http.ExpectedResponse{
 			{
-				Request:   http.ExpectedRequest{Path: "/one"},
+				Request:   http.Request{Path: "/one"},
 				Backend:   "infra-backend-v1",
 				Namespace: ns,
 			}, {
-				Request:   http.ExpectedRequest{Path: "/two"},
+				Request:   http.Request{Path: "/two"},
 				Backend:   "infra-backend-v2",
 				Namespace: ns,
 			}, {
-				Request:    http.ExpectedRequest{Path: "/"},
+				Request:    http.Request{Path: "/"},
 				StatusCode: 404,
 			}, {
-				Request:    http.ExpectedRequest{Path: "/one/example"},
+				Request:    http.Request{Path: "/one/example"},
 				StatusCode: 404,
 			}, {
-				Request:    http.ExpectedRequest{Path: "/two/"},
+				Request:    http.Request{Path: "/two/"},
 				StatusCode: 404,
 			},
 		}

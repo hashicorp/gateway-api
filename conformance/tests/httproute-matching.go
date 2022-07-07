@@ -38,30 +38,30 @@ var HTTPRouteMatching = suite.ConformanceTest{
 		ns := "gateway-conformance-infra"
 		routeNN := types.NamespacedName{Name: "matching", Namespace: ns}
 		gwNN := types.NamespacedName{Name: "same-namespace", Namespace: ns}
-		gwAddr := kubernetes.GatewayAndHTTPRoutesMustBeReady(t, suite.Client, suite.ControllerName, gwNN, routeNN)
+		gwAddr := kubernetes.GatewayAndHTTPRoutesMustBeReady(t, suite.Client, suite.ControllerName, kubernetes.NewGatewayRef(gwNN), routeNN)
 
 		testCases := []http.ExpectedResponse{{
-			Request:   http.ExpectedRequest{Path: "/"},
+			Request:   http.Request{Path: "/"},
 			Backend:   "infra-backend-v1",
 			Namespace: ns,
 		}, {
-			Request:   http.ExpectedRequest{Path: "/example"},
+			Request:   http.Request{Path: "/example"},
 			Backend:   "infra-backend-v1",
 			Namespace: ns,
 		}, {
-			Request:   http.ExpectedRequest{Path: "/", Headers: map[string]string{"Version": "one"}},
+			Request:   http.Request{Path: "/", Headers: map[string]string{"Version": "one"}},
 			Backend:   "infra-backend-v1",
 			Namespace: ns,
 		}, {
-			Request:   http.ExpectedRequest{Path: "/v2"},
+			Request:   http.Request{Path: "/v2"},
 			Backend:   "infra-backend-v2",
 			Namespace: ns,
 		}, {
-			Request:   http.ExpectedRequest{Path: "/v2/example"},
+			Request:   http.Request{Path: "/v2/example"},
 			Backend:   "infra-backend-v2",
 			Namespace: ns,
 		}, {
-			Request:   http.ExpectedRequest{Path: "/", Headers: map[string]string{"Version": "two"}},
+			Request:   http.Request{Path: "/", Headers: map[string]string{"Version": "two"}},
 			Backend:   "infra-backend-v2",
 			Namespace: ns,
 		}}

@@ -2,8 +2,8 @@ apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
   annotations:
-    api-approved.kubernetes.io: https://github.com/kubernetes-sigs/gateway-api/pull/891
-    gateway.networking.k8s.io/bundle-version: v0.5.0-dev
+    api-approved.kubernetes.io: https://github.com/kubernetes-sigs/gateway-api/pull/1086
+    gateway.networking.k8s.io/bundle-version: v0.5.0-rc1
     gateway.networking.k8s.io/channel: experimental
   creationTimestamp: null
   name: tcproutes.gateway.networking.k8s.io
@@ -79,7 +79,7 @@ spec:
                     kind:
                       default: Gateway
                       description: "Kind is kind of the referent. \n Support: Core
-                        (Gateway) Support: Custom (Other Resources)"
+                        (Gateway) \n Support: Custom (Other Resources)"
                       maxLength: 63
                       minLength: 1
                       pattern: ^[a-zA-Z]([-a-zA-Z0-9]*[a-zA-Z0-9])?$
@@ -165,8 +165,8 @@ spec:
                         attempts to this backend. Connection rejections must respect
                         weight; if an invalid backend is requested to have 80% of
                         connections, then 80% of connections must be rejected instead.
-                        \n Support: Core for Kubernetes Service Support: Custom for
-                        any other resource \n Support for weight: Extended"
+                        \n Support: Core for Kubernetes Service \n Support: Custom
+                        for any other resource \n Support for weight: Extended"
                       items:
                         description: "BackendRef defines how a Route should forward
                           a request to a Kubernetes resource. \n Note that when a
@@ -200,11 +200,11 @@ spec:
                           namespace:
                             description: "Namespace is the namespace of the backend.
                               When unspecified, the local namespace is inferred. \n
-                              Note that when a namespace is specified, a ReferenceGrant
-                              object is required in the referent namespace to allow
-                              that namespace's owner to accept the reference. See
-                              the ReferenceGrant documentation for details. \n Support:
-                              Core"
+                              Note that when a different namespace is specified, a
+                              ReferenceGrant object with ReferenceGrantTo.Kind=Service
+                              is required in the referent namespace to allow that
+                              namespace's owner to accept the reference. See the ReferenceGrant
+                              documentation for details. \n Support: Core"
                             maxLength: 63
                             minLength: 1
                             pattern: ^[a-z0-9]([-a-z0-9]*[a-z0-9])?$
@@ -394,7 +394,7 @@ spec:
                         kind:
                           default: Gateway
                           description: "Kind is kind of the referent. \n Support:
-                            Core (Gateway) Support: Custom (Other Resources)"
+                            Core (Gateway) \n Support: Custom (Other Resources)"
                           maxLength: 63
                           minLength: 1
                           pattern: ^[a-zA-Z]([-a-zA-Z0-9]*[a-zA-Z0-9])?$

@@ -202,7 +202,7 @@ type HTTPRouteRule struct {
 	// BackendRefs defines the backend(s) where matching requests should be
 	// sent.
 	//
-	// A 404 status code MUST be returned if there are no BackendRefs or filters
+	// A 500 status code MUST be returned if there are no BackendRefs or filters
 	// specified that would result in a response being sent.
 	//
 	// A BackendRef is considered invalid when it refers to:
@@ -212,16 +212,17 @@ type HTTPRouteRule struct {
 	// * a resource in another namespace when the reference has not been
 	//   explicitly allowed by a ReferenceGrant (or equivalent concept).
 	//
-	// When a BackendRef is invalid, 404 status codes MUST be returned for
+	// When a BackendRef is invalid, 500 status codes MUST be returned for
 	// requests that would have otherwise been routed to an invalid backend. If
 	// multiple backends are specified, and some are invalid, the proportion of
 	// requests that would otherwise have been routed to an invalid backend
-	// MUST receive a 404 status code.
+	// MUST receive a 500 status code.
 	//
 	// When a BackendRef refers to a Service that has no ready endpoints, it is
 	// recommended to return a 503 status code.
 	//
 	// Support: Core for Kubernetes Service
+	//
 	// Support: Custom for any other resource
 	//
 	// Support for weight: Core
@@ -403,6 +404,10 @@ type HTTPQueryParamMatch struct {
 	// exact string match. (See
 	// https://tools.ietf.org/html/rfc7230#section-2.7.3).
 	//
+	// If multiple entries specify equivalent query param names, only the first
+	// entry with an equivalent name MUST be considered for a match. Subsequent
+	// entries with an equivalent query param name MUST be ignored.
+	//
 	// +kubebuilder:validation:MinLength=1
 	// +kubebuilder:validation:MaxLength=256
 	Name string `json:"name"`
@@ -550,6 +555,7 @@ type HTTPRouteFilter struct {
 	RequestRedirect *HTTPRequestRedirectFilter `json:"requestRedirect,omitempty"`
 
 	// URLRewrite defines a schema for a filter that modifies a request during forwarding.
+	//
 	// Support: Extended
 	//
 	// <gateway:experimental>
@@ -820,8 +826,9 @@ type HTTPRequestRedirectFilter struct {
 // forwarding. At most one of these filters may be used on a Route rule. This
 // MUST NOT be used on the same Route rule as a HTTPRequestRedirect filter.
 //
-// <gateway:experimental>
 // Support: Extended
+//
+// <gateway:experimental>
 type HTTPURLRewriteFilter struct {
 	// Hostname is the value to be used to replace the Host header value during
 	// forwarding.
@@ -860,6 +867,7 @@ type HTTPRequestMirrorFilter struct {
 	// should be used to provide more detail about the problem.
 	//
 	// Support: Extended for Kubernetes Service
+	//
 	// Support: Custom for any other resource
 	BackendRef BackendObjectReference `json:"backendRef"`
 }

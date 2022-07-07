@@ -29,7 +29,7 @@ import metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 // as the policy.
 //
 // Each ReferenceGrant can be used to represent a unique trust relationship.
-// Additional Reference Policies can be used to add to the set of trusted
+// Additional Reference Grants can be used to add to the set of trusted
 // sources of inbound references for the namespace they are defined within.
 //
 // All cross-namespace references in Gateway API (with the exception of cross-namespace
@@ -92,8 +92,14 @@ type ReferenceGrantFrom struct {
 	Group Group `json:"group"`
 
 	// Kind is the kind of the referent. Although implementations may support
-	// additional resources, the following Route types are part of the "Core"
-	// support level for this field:
+	// additional resources, the following types are part of the "Core"
+	// support level for this field.
+	//
+	// When used to permit a SecretObjectReference:
+	//
+	// * Gateway
+	//
+	// When used to permit a BackendObjectReference:
 	//
 	// * HTTPRoute
 	// * TCPRoute
@@ -120,7 +126,8 @@ type ReferenceGrantTo struct {
 	// additional resources, the following types are part of the "Core"
 	// support level for this field:
 	//
-	// * Service
+	// * Secret when used to permit a SecretObjectReference
+	// * Service when used to permit a BackendObjectReference
 	Kind Kind `json:"kind"`
 
 	// Name is the name of the referent. When unspecified, this policy

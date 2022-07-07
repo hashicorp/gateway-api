@@ -42,42 +42,46 @@ var HTTPRouteListenerHostnameMatching = suite.ConformanceTest{
 		kubernetes.NamespacesMustBeReady(t, suite.Client, []string{ns}, 300)
 
 		gwNN := types.NamespacedName{Name: "httproute-listener-hostname-matching", Namespace: ns}
-		routes := []types.NamespacedName{
-			{Namespace: ns, Name: "backend-v1"},
-			{Namespace: ns, Name: "backend-v2"},
-			{Namespace: ns, Name: "backend-v3"},
-		}
-		gwAddr := kubernetes.GatewayAndHTTPRoutesMustBeReady(t, suite.Client, suite.ControllerName, gwNN, routes...)
+
+		_ = kubernetes.GatewayAndHTTPRoutesMustBeReady(t, suite.Client, suite.ControllerName, kubernetes.NewGatewayRef(gwNN, "listener-1"),
+			types.NamespacedName{Namespace: ns, Name: "backend-v1"},
+		)
+		_ = kubernetes.GatewayAndHTTPRoutesMustBeReady(t, suite.Client, suite.ControllerName, kubernetes.NewGatewayRef(gwNN, "listener-2"),
+			types.NamespacedName{Namespace: ns, Name: "backend-v2"},
+		)
+		gwAddr := kubernetes.GatewayAndHTTPRoutesMustBeReady(t, suite.Client, suite.ControllerName, kubernetes.NewGatewayRef(gwNN, "listener-3", "listener-4"),
+			types.NamespacedName{Namespace: ns, Name: "backend-v3"},
+		)
 
 		testCases := []http.ExpectedResponse{{
-			Request:   http.ExpectedRequest{Host: "bar.com", Path: "/"},
+			Request:   http.Request{Host: "bar.com", Path: "/"},
 			Backend:   "infra-backend-v1",
 			Namespace: ns,
 		}, {
-			Request:   http.ExpectedRequest{Host: "foo.bar.com", Path: "/"},
+			Request:   http.Request{Host: "foo.bar.com", Path: "/"},
 			Backend:   "infra-backend-v2",
 			Namespace: ns,
 		}, {
-			Request:   http.ExpectedRequest{Host: "baz.bar.com", Path: "/"},
+			Request:   http.Request{Host: "baz.bar.com", Path: "/"},
 			Backend:   "infra-backend-v3",
 			Namespace: ns,
 		}, {
-			Request:   http.ExpectedRequest{Host: "boo.bar.com", Path: "/"},
+			Request:   http.Request{Host: "boo.bar.com", Path: "/"},
 			Backend:   "infra-backend-v3",
 			Namespace: ns,
 		}, {
-			Request:   http.ExpectedRequest{Host: "multiple.prefixes.bar.com", Path: "/"},
+			Request:   http.Request{Host: "multiple.prefixes.bar.com", Path: "/"},
 			Backend:   "infra-backend-v3",
 			Namespace: ns,
 		}, {
-			Request:   http.ExpectedRequest{Host: "multiple.prefixes.foo.com", Path: "/"},
+			Request:   http.Request{Host: "multiple.prefixes.foo.com", Path: "/"},
 			Backend:   "infra-backend-v3",
 			Namespace: ns,
 		}, {
-			Request:    http.ExpectedRequest{Host: "foo.com", Path: "/"},
+			Request:    http.Request{Host: "foo.com", Path: "/"},
 			StatusCode: 404,
 		}, {
-			Request:    http.ExpectedRequest{Host: "no.matching.host", Path: "/"},
+			Request:    http.Request{Host: "no.matching.host", Path: "/"},
 			StatusCode: 404,
 		}}
 
