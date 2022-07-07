@@ -40,6 +40,7 @@ var testsToSkip = []string{
 	// reason NotReconciled, "Waiting for controller" (why?)
 	tests.HTTPRouteListenerHostnameMatching.ShortName,
 	tests.HTTPRouteDisallowedKind.ShortName,
+	tests.HTTPRouteHostnameIntersection.ShortName,
 }
 
 func TestConformance(t *testing.T) {
