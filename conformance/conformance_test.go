@@ -39,6 +39,7 @@ var testsToSkip = []string{
 	tests.HTTPRouteInvalidCrossNamespaceBackendRef.ShortName,
 	tests.HTTPRouteInvalidBackendRefUnknownKind.ShortName,
 	tests.HTTPRouteInvalidNonExistentBackendRef.ShortName,
+	tests.HTTPRouteInvalidReferenceGrant.ShortName,
 
 	// Test asserts 404 response which we can't yet provide due to xDS control
 	tests.HTTPRouteHeaderMatching.ShortName,
