@@ -18,6 +18,10 @@ limitations under the License.
 package conformance_test
 
 import (
+	"strings"
+	"testing"
+	"time"
+
 	_ "k8s.io/client-go/plugin/pkg/client/auth"
 	"k8s.io/utils/strings/slices"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -28,8 +32,6 @@ import (
 	testconfig "sigs.k8s.io/gateway-api/conformance/utils/config"
 	"sigs.k8s.io/gateway-api/conformance/utils/flags"
 	"sigs.k8s.io/gateway-api/conformance/utils/suite"
-	"strings"
-	"testing"
 )
 
 var testsToSkip = []string{
@@ -74,7 +76,7 @@ func TestConformance(t *testing.T) {
 		SupportedFeatures:    supportedFeatures,
 		ExemptFeatures:       exemptFeatures,
 		TimeoutConfig: testconfig.TimeoutConfig{
-			MaxTimeToConsistency: 600,
+			MaxTimeToConsistency: 60 * time.Second,
 		},
 	})
 
