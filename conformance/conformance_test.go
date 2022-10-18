@@ -80,7 +80,7 @@ func TestConformance(t *testing.T) {
 		SupportedFeatures:    supportedFeatures,
 		ExemptFeatures:       exemptFeatures,
 		TimeoutConfig: testconfig.TimeoutConfig{
-			MaxTimeToConsistency: 60 * time.Second,
+			MaxTimeToConsistency: 90 * time.Second,
 		},
 	})
 
