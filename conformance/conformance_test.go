@@ -50,6 +50,9 @@ var testsToSkip = []string{
 	tests.HTTPRouteListenerHostnameMatching.ShortName,
 	tests.HTTPRouteDisallowedKind.ShortName,
 	tests.HTTPRouteHostnameIntersection.ShortName,
+
+	// Relies on UDPRoute which we do not support and so return an error that upstream does not expect
+	tests.GatewayUnsupportedRouteKind.ShortName,
 }
 
 func TestConformance(t *testing.T) {
