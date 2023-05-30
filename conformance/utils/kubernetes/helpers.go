@@ -107,7 +107,7 @@ func NamespacesMustBeReady(t *testing.T, c client.Client, timeoutConfig config.T
 			}
 			for _, gw := range gwList.Items {
 				// Passing an empty string as the Reason means that any Reason will do.
-				if !findConditionInList(t, gw.Status.Conditions, "Ready", "True", "") {
+				if !findConditionInList(t, gw.Status.Conditions, "Programmed", "True", "") && !findConditionInList(t, gw.Status.Conditions, "Ready", "True", "") {
 					t.Logf("%s/%s Gateway not ready yet", ns, gw.Name)
 					return false, nil
 				}
