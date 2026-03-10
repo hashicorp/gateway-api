@@ -1,3 +1,6 @@
+# Copyright IBM Corp. 2019, 2022
+# SPDX-License-Identifier: Apache-2.0
+
 contact_links:
 - name: "Issue regarding a specific implementation of the API"
   url: https://gateway-api.sigs.k8s.io/implementations/
