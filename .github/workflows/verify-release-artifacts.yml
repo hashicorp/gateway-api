@@ -1,3 +1,6 @@
+# Copyright IBM Corp. 2019, 2022
+# SPDX-License-Identifier: Apache-2.0
+
 # Verify that release artifacts (standard-install.yaml) match the source at the release tag.
 # Runs when a new release is published (any tag). For release events, GitHub uses the workflow
 # from the default branch—ensure this file is on main (or your default branch).

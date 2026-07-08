@@ -1,3 +1,6 @@
+# Copyright IBM Corp. 2019, 2022
+# SPDX-License-Identifier: Apache-2.0
+
 # This file contains configuration for our reference docs generation. For more
 # information about the possible configuration, refer to
 # https://github.com/elastic/crd-ref-docs.

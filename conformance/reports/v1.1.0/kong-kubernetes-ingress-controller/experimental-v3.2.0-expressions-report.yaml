@@ -1,3 +1,6 @@
+# Copyright IBM Corp. 2019, 2022
+# SPDX-License-Identifier: Apache-2.0
+
 apiVersion: gateway.networking.k8s.io/v1alpha1
 date: "2024-06-12T12:47:45Z"
 gatewayAPIChannel: experimental
