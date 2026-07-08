@@ -5,17 +5,23 @@ the specification and Custom Resource Definitions (CRDs).
 
 ## Status
 
-The latest supported version is `v1beta1` as released by the [v0.5.1
-release](https://github.com/kubernetes-sigs/gateway-api/releases/tag/v0.5.1) of
-this project.
+The latest supported version is `v1` as released by
+the [v1.6.0 release][gh_release] of this project.
 
-This version of the API is has beta level support for the following resources:
+This version of the API has GA level support for the following resources:
 
-- `v1beta1.GatewayClass`
-- `v1beta1.Gateway`
-- `v1beta1.HTTPRoute`
+- `v1.GatewayClass`
+- `v1.Gateway`
+- `v1.ListenerSet`
+- `v1.HTTPRoute`
+- `v1.GRPCRoute`
+- `v1.TLSRoute`
+- `v1.TCPRoute`
+- `v1.UDPRoute`
+- `v1.BackendTLSPolicy`
+- `v1.ReferenceGrant`
 
-For all other APIs we provide alpha level support.
+For all the other APIs and their support levels please consult [the spec][spec].
 
 ## Documentation
 
@@ -32,27 +38,31 @@ to understand the API and the use-cases it targets.
 
 ### Getting started
 
-Once you have a good understanding of the API at a higher-level, check out 
-[getting started][getting-started] to install your first Gateway controller and try out 
-one of the guides. 
+Once you have a good understanding of the API at a higher-level, check out
+[getting started][getting-started] to install your first Gateway controller and try out
+one of the guides.
 
 ### References
 
-A complete API reference, please refer to:
+For a complete API reference, please refer to:
 
 - [API reference][spec]
-- [Go docs for the package](https://pkg.go.dev/sigs.k8s.io/gateway-api/apis/v1alpha2)
+- [Go docs for the package][godoc]
+
+## Gateway API conformance
+
+If you are developing a Gateway API implementation and want to run conformance tests
+against your project and eventually submit the proof of conformance, visit the [conformance
+documentation][conformance-docs] for the test suite documentation, and the conformance
+reports [readme][reports-readme] to see the reports submission rules. If you
+are a user who wants to explore the features supported by the various implementations,
+navigate the [conformance reports][conformance-reports]
 
 ## Contributing
 
 Community meeting schedule, notes and developer guide can be found on the
 [community page][cm].
 Our Kubernetes Slack channel is [#sig-network-gateway-api][slack].
-
-## Technical Leads
-
-- @bowei
-- @thockin
 
 ### Code of conduct
 
@@ -63,8 +73,12 @@ Participation in the Kubernetes community is governed by the
 [sn]: https://github.com/kubernetes/community/tree/master/sig-network
 [cm]: https://gateway-api.sigs.k8s.io/contributing/community
 [slack]: https://kubernetes.slack.com/messages/sig-network-gateway-api
-[getting-started]: https://gateway-api.sigs.k8s.io/v1alpha2/guides/getting-started/
-[spec]: https://gateway-api.sigs.k8s.io/v1alpha2/references/spec
-[concepts]: https://gateway-api.sigs.k8s.io/concepts/api-overview
+[getting-started]: https://gateway-api.sigs.k8s.io/guides/
+[spec]: https://gateway-api.sigs.k8s.io/reference/api-spec/main/spec/
+[concepts]: https://gateway-api.sigs.k8s.io/docs/concepts/api-overview
 [security-model]: https://gateway-api.sigs.k8s.io/concepts/security-model
-
+[gh_release]: https://github.com/kubernetes-sigs/gateway-api/releases/tag/v1.6.0
+[godoc]: https://pkg.go.dev/sigs.k8s.io/gateway-api
+[conformance-docs]: https://gateway-api.sigs.k8s.io/docs/concepts/conformance/
+[reports-readme]: ./conformance/reports/README.md
+[conformance-reports]: ./conformance/reports/

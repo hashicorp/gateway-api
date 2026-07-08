@@ -1,8 +1,8 @@
 <!--  Thanks for sending a pull request! Here are some tips for you:
 
 1. If this is your first time contributing to Gateway API, please read our
-   developer guide (https://gateway-api.sigs.k8s.io/devguide/)
-   and our community page (https://gateway-api.sigs.k8s.io/community/).
+   developer guide (https://gateway-api.sigs.k8s.io/contributing/devguide/)
+   and our community page (https://gateway-api.sigs.k8s.io/contributing/).
 2. If this is your first time contributing to a Kubernetes project, please read
    our contributor guidelines:
    https://git.k8s.io/community/contributors/guide/first-contribution.md#your-first-contribution
@@ -14,6 +14,10 @@
    https://git.k8s.io/community/contributors/guide/pull-requests.md#best-practices-for-faster-reviews
 5. If the PR is unfinished, see how to mark it:
    https://git.k8s.io/community/contributors/guide/pull-requests.md#marking-unfinished-pull-requests
+6. If this PR includes a new GEP please make sure you've followed the process
+   outlined in our GEP overview, as this will help the community to ensure the
+   best chance of positive outcomes for your proposal:
+   https://gateway-api.sigs.k8s.io/enhancements/overview/#process
 -->
 
 **What type of PR is this?**
@@ -23,15 +27,16 @@ Add one of the following kinds:
 /kind cleanup
 /kind documentation
 /kind feature
-/kind design
 /kind gep
+/kind test
 
 Optionally add one or more of the following kinds if applicable:
-/kind api-change
 /kind deprecation
 /kind failing-test
 /kind flake
 /kind regression
+/area conformance-test
+/area conformance-machinery
 -->
 
 **What this PR does / why we need it**:

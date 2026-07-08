@@ -22,33 +22,38 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 
-	"sigs.k8s.io/gateway-api/apis/v1beta1"
+	v1 "sigs.k8s.io/gateway-api/apis/v1"
 	"sigs.k8s.io/gateway-api/conformance/utils/http"
 	"sigs.k8s.io/gateway-api/conformance/utils/kubernetes"
-	"sigs.k8s.io/gateway-api/conformance/utils/suite"
+	confsuite "sigs.k8s.io/gateway-api/conformance/utils/suite"
+	"sigs.k8s.io/gateway-api/pkg/features"
 )
 
 func init() {
 	ConformanceTests = append(ConformanceTests, HTTPRouteInvalidBackendRefUnknownKind)
 }
 
-var HTTPRouteInvalidBackendRefUnknownKind = suite.ConformanceTest{
+var HTTPRouteInvalidBackendRefUnknownKind = confsuite.ConformanceTest{
 	ShortName:   "HTTPRouteInvalidBackendRefUnknownKind",
 	Description: "A single HTTPRoute in the gateway-conformance-infra namespace should set a ResolvedRefs status False with reason InvalidKind when attempting to bind to a Gateway in the same namespace if the route has a BackendRef that points to an unknown Kind.",
-	Manifests:   []string{"tests/httproute-invalid-backendref-unknown-kind.yaml"},
-	Test: func(t *testing.T, suite *suite.ConformanceTestSuite) {
-		routeNN := types.NamespacedName{Name: "invalid-backend-ref-unknown-kind", Namespace: "gateway-conformance-infra"}
-		gwNN := types.NamespacedName{Name: "same-namespace", Namespace: "gateway-conformance-infra"}
+	Features: []features.FeatureName{
+		features.SupportGateway,
+		features.SupportHTTPRoute,
+	},
+	Manifests: []string{"tests/httproute-invalid-backendref-unknown-kind.yaml"},
+	Test: func(t *testing.T, suite *confsuite.ConformanceTestSuite) {
+		routeNN := types.NamespacedName{Name: "invalid-backend-ref-unknown-kind", Namespace: confsuite.InfrastructureNamespace}
+		gwNN := types.NamespacedName{Name: "same-namespace", Namespace: confsuite.InfrastructureNamespace}
 
 		// Both the Gateway and the Route are Accepted.
-		gwAddr := kubernetes.GatewayAndHTTPRoutesMustBeReady(t, suite.Client, suite.TimeoutConfig, suite.ControllerName, kubernetes.NewGatewayRef(gwNN), routeNN)
+		gwAddr := kubernetes.GatewayAndHTTPRoutesMustBeAccepted(t, suite.Client, suite.TimeoutConfig, suite.ControllerName, kubernetes.NewGatewayRef(gwNN), routeNN)
 
 		// The Route must have a ResolvedRefs Condition with a InvalidKind Reason.
 		t.Run("HTTPRoute with Invalid Kind has a ResolvedRefs Condition with status False and Reason InvalidKind", func(t *testing.T) {
 			resolvedRefsCond := metav1.Condition{
-				Type:   string(v1beta1.RouteConditionResolvedRefs),
+				Type:   string(v1.RouteConditionResolvedRefs),
 				Status: metav1.ConditionFalse,
-				Reason: string(v1beta1.RouteReasonInvalidKind),
+				Reason: string(v1.RouteReasonInvalidKind),
 			}
 
 			kubernetes.HTTPRouteMustHaveCondition(t, suite.Client, suite.TimeoutConfig, routeNN, gwNN, resolvedRefsCond)
@@ -60,9 +65,8 @@ var HTTPRouteInvalidBackendRefUnknownKind = suite.ConformanceTest{
 					Method: "GET",
 					Path:   "/v2",
 				},
-				StatusCode: 500,
+				Response: http.Response{StatusCode: 500},
 			})
 		})
-
 	},
 }

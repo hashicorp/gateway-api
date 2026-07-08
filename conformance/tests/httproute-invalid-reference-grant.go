@@ -1,5 +1,5 @@
 /*
-Copyright 2022 The Kubernetes Authors.
+Copyright 2023 The Kubernetes Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -22,60 +22,51 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 
-	"sigs.k8s.io/gateway-api/apis/v1beta1"
+	v1 "sigs.k8s.io/gateway-api/apis/v1"
 	"sigs.k8s.io/gateway-api/conformance/utils/http"
 	"sigs.k8s.io/gateway-api/conformance/utils/kubernetes"
-	"sigs.k8s.io/gateway-api/conformance/utils/suite"
+	confsuite "sigs.k8s.io/gateway-api/conformance/utils/suite"
+	"sigs.k8s.io/gateway-api/pkg/features"
 )
 
 func init() {
 	ConformanceTests = append(ConformanceTests, HTTPRouteInvalidReferenceGrant)
 }
 
-var HTTPRouteInvalidReferenceGrant = suite.ConformanceTest{
+var HTTPRouteInvalidReferenceGrant = confsuite.ConformanceTest{
 	ShortName:   "HTTPRouteInvalidReferenceGrant",
-	Description: "A single HTTPRoute in the gateway-conformance-infra namespace should fail to attach to a Gateway in the same namespace if the route has a backendRef Service in the gateway-conformance-app-backend namespace and a ReferenceGrant exists but does not grant permission to route to that specific Service",
-	Exemptions:  []suite.ExemptFeature{suite.ExemptReferenceGrant},
-	Manifests:   []string{"tests/httproute-invalid-reference-grant.yaml"},
-	Test: func(t *testing.T, s *suite.ConformanceTestSuite) {
-		routeNN := types.NamespacedName{Name: "invalid-reference-grant", Namespace: "gateway-conformance-infra"}
-		gwNN := types.NamespacedName{Name: "same-namespace", Namespace: "gateway-conformance-infra"}
-
-		// Route and Gateway must be Attached.
-		gwAddr := kubernetes.GatewayAndHTTPRoutesMustBeReady(t, s.Client, s.TimeoutConfig, s.ControllerName, kubernetes.NewGatewayRef(gwNN), routeNN)
+	Description: "A single HTTPRoute in the gateway-conformance-infra namespace, with a backendRef in another namespace without valid ReferenceGrant, should have the ResolvedRefs condition set to False and not forward HTTP requests to any backend",
+	Features: []features.FeatureName{
+		features.SupportGateway,
+		features.SupportHTTPRoute,
+		features.SupportReferenceGrant,
+	},
+	Manifests: []string{"tests/httproute-invalid-reference-grant.yaml"},
+	Test: func(t *testing.T, suite *confsuite.ConformanceTestSuite) {
+		routeNN := types.NamespacedName{Name: "reference-grant", Namespace: confsuite.InfrastructureNamespace}
+		gwNN := types.NamespacedName{Name: "same-namespace", Namespace: confsuite.InfrastructureNamespace}
+		gwAddr := kubernetes.GatewayAndHTTPRoutesMustBeAccepted(t, suite.Client, suite.TimeoutConfig, suite.ControllerName, kubernetes.NewGatewayRef(gwNN), routeNN)
 
 		t.Run("HTTPRoute with BackendRef in another namespace and no ReferenceGrant covering the Service has a ResolvedRefs Condition with status False and Reason RefNotPermitted", func(t *testing.T) {
-
 			resolvedRefsCond := metav1.Condition{
-				Type:   string(v1beta1.RouteConditionResolvedRefs),
+				Type:   string(v1.RouteConditionResolvedRefs),
 				Status: metav1.ConditionFalse,
-				Reason: string(v1beta1.RouteReasonRefNotPermitted),
+				Reason: string(v1.RouteReasonRefNotPermitted),
 			}
 
-			kubernetes.HTTPRouteMustHaveCondition(t, s.Client, s.TimeoutConfig, routeNN, gwNN, resolvedRefsCond)
+			kubernetes.HTTPRouteMustHaveCondition(t, suite.Client, suite.TimeoutConfig, routeNN, gwNN, resolvedRefsCond)
 		})
 
-		t.Run("HTTP Request to invalid backend with missing referenceGrant should receive a 500", func(t *testing.T) {
-			http.MakeRequestAndExpectEventuallyConsistentResponse(t, s.RoundTripper, s.TimeoutConfig, gwAddr, http.ExpectedResponse{
-				Request: http.Request{
-					Method: "GET",
-					Path:   "/v2",
-				},
-				StatusCode: 500,
-			})
-		})
-
-		t.Run("HTTP Request to valid sibling backend should succeed", func(t *testing.T) {
-			http.MakeRequestAndExpectEventuallyConsistentResponse(t, s.RoundTripper, s.TimeoutConfig, gwAddr, http.ExpectedResponse{
+		t.Run("Simple HTTP request not should reach web-backend", func(t *testing.T) {
+			http.MakeRequestAndExpectEventuallyConsistentResponse(t, suite.RoundTripper, suite.TimeoutConfig, gwAddr, http.ExpectedResponse{
 				Request: http.Request{
 					Method: "GET",
 					Path:   "/",
 				},
-				StatusCode: 200,
-				Backend:    "app-backend-v1",
-				Namespace:  "gateway-conformance-app-backend",
+				Response:  http.Response{StatusCode: 500},
+				Backend:   "web-backend",
+				Namespace: confsuite.WebBackendNamespace,
 			})
 		})
-
 	},
 }

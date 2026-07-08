@@ -16,26 +16,18 @@ limitations under the License.
 
 package v1alpha2
 
-// PolicyTargetReference identifies an API object to apply policy to. This
-// should be used as part of Policy resources that can target Gateway API
-// resources. For more information on how this policy attachment model works,
-// and a sample Policy resource, refer to the policy attachment documentation
-// for Gateway API.
-type PolicyTargetReference struct {
-	// Group is the group of the target resource.
-	Group Group `json:"group"`
+import v1 "sigs.k8s.io/gateway-api/apis/v1"
 
-	// Kind is kind of the target resource.
-	Kind Kind `json:"kind"`
+type LocalPolicyTargetReference v1.LocalPolicyTargetReference
 
-	// Name is the name of the target resource.
-	Name ObjectName `json:"name"`
+type NamespacedPolicyTargetReference v1.NamespacedPolicyTargetReference
 
-	// Namespace is the namespace of the referent. When unspecified, the local
-	// namespace is inferred. Even when policy targets a resource in a different
-	// namespace, it MUST only apply to traffic originating from the same
-	// namespace as the policy.
-	//
-	// +optional
-	Namespace *Namespace `json:"namespace,omitempty"`
-}
+type LocalPolicyTargetReferenceWithSectionName v1.LocalPolicyTargetReferenceWithSectionName
+
+type PolicyConditionType v1.PolicyConditionType
+
+type PolicyConditionReason v1.PolicyConditionReason
+
+type PolicyAncestorStatus v1.PolicyAncestorStatus
+
+type PolicyStatus v1.PolicyStatus

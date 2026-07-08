@@ -22,9 +22,10 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 
-	"sigs.k8s.io/gateway-api/apis/v1beta1"
+	v1 "sigs.k8s.io/gateway-api/apis/v1"
 	"sigs.k8s.io/gateway-api/conformance/utils/kubernetes"
 	"sigs.k8s.io/gateway-api/conformance/utils/suite"
+	"sigs.k8s.io/gateway-api/pkg/features"
 )
 
 func init() {
@@ -33,26 +34,36 @@ func init() {
 
 var GatewaySecretReferenceGrantAllInNamespace = suite.ConformanceTest{
 	ShortName:   "GatewaySecretReferenceGrantAllInNamespace",
-	Description: "A Gateway in the gateway-conformance-infra namespace should become ready if the Gateway has a certificateRef for a Secret in the gateway-conformance-web-backend namespace and a ReferenceGrant granting permission to all Secrets in the namespace exists",
-	Exemptions:  []suite.ExemptFeature{suite.ExemptReferenceGrant},
-	Manifests:   []string{"tests/gateway-secret-reference-grant-all-in-namespace.yaml"},
+	Description: "A Gateway in the gateway-conformance-infra namespace should become programmed if the Gateway has a certificateRef for a Secret in the gateway-conformance-web-backend namespace and a ReferenceGrant granting permission to all Secrets in the namespace exists",
+	Features: []features.FeatureName{
+		features.SupportGateway,
+		features.SupportReferenceGrant,
+	},
+	Manifests: []string{"tests/gateway-secret-reference-grant-all-in-namespace.yaml"},
+	Parallel:  true,
 	Test: func(t *testing.T, s *suite.ConformanceTestSuite) {
-		gwNN := types.NamespacedName{Name: "gateway-secret-reference-grant", Namespace: "gateway-conformance-infra"}
+		gwNN := types.NamespacedName{Name: "gateway-secret-reference-grant-all-in-namespace", Namespace: suite.InfrastructureNamespace}
 
-		t.Run("Gateway listener should have a true ResolvedRefs condition and a true Ready condition", func(t *testing.T) {
-			listeners := []v1beta1.ListenerStatus{{
-				Name: v1beta1.SectionName("https"),
-				SupportedKinds: []v1beta1.RouteGroupKind{{
-					Group: (*v1beta1.Group)(&v1beta1.GroupVersion.Group),
-					Kind:  v1beta1.Kind("HTTPRoute"),
+		t.Run("Gateway listener should have a true ResolvedRefs condition and a true Programmed condition", func(t *testing.T) {
+			listeners := []v1.ListenerStatus{{
+				Name: v1.SectionName("https"),
+				SupportedKinds: []v1.RouteGroupKind{{
+					Group: (*v1.Group)(&v1.GroupVersion.Group),
+					Kind:  v1.Kind("HTTPRoute"),
 				}},
 				Conditions: []metav1.Condition{
 					{
-						Type:   string(v1beta1.ListenerConditionReady),
+						Type:   string(v1.ListenerConditionProgrammed),
 						Status: metav1.ConditionTrue,
-						Reason: string(v1beta1.ListenerReasonReady),
+						Reason: string(v1.ListenerReasonProgrammed),
+					},
+					{
+						Type:   string(v1.ListenerConditionResolvedRefs),
+						Status: metav1.ConditionTrue,
+						Reason: "", // any reason
 					},
 				},
+				AttachedRoutes: 0,
 			}}
 
 			kubernetes.GatewayStatusMustHaveListeners(t, s.Client, s.TimeoutConfig, gwNN, listeners)

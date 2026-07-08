@@ -23,28 +23,34 @@ import (
 
 	"sigs.k8s.io/gateway-api/conformance/utils/http"
 	"sigs.k8s.io/gateway-api/conformance/utils/kubernetes"
-	"sigs.k8s.io/gateway-api/conformance/utils/suite"
+	confsuite "sigs.k8s.io/gateway-api/conformance/utils/suite"
+	"sigs.k8s.io/gateway-api/pkg/features"
 )
 
 func init() {
 	ConformanceTests = append(ConformanceTests, HTTPRouteCrossNamespace)
 }
 
-var HTTPRouteCrossNamespace = suite.ConformanceTest{
+var HTTPRouteCrossNamespace = confsuite.ConformanceTest{
 	ShortName:   "HTTPRouteCrossNamespace",
 	Description: "A single HTTPRoute in the gateway-conformance-web-backend namespace should attach to Gateway in another namespace",
-	Manifests:   []string{"tests/httproute-cross-namespace.yaml"},
-	Test: func(t *testing.T, suite *suite.ConformanceTestSuite) {
-		routeNN := types.NamespacedName{Name: "cross-namespace", Namespace: "gateway-conformance-web-backend"}
-		gwNN := types.NamespacedName{Name: "backend-namespaces", Namespace: "gateway-conformance-infra"}
-		gwAddr := kubernetes.GatewayAndHTTPRoutesMustBeReady(t, suite.Client, suite.TimeoutConfig, suite.ControllerName, kubernetes.NewGatewayRef(gwNN), routeNN)
+	Features: []features.FeatureName{
+		features.SupportGateway,
+		features.SupportHTTPRoute,
+	},
+	Manifests: []string{"tests/httproute-cross-namespace.yaml"},
+	Test: func(t *testing.T, suite *confsuite.ConformanceTestSuite) {
+		routeNN := types.NamespacedName{Name: "cross-namespace", Namespace: confsuite.WebBackendNamespace}
+		gwNN := types.NamespacedName{Name: "backend-namespaces", Namespace: confsuite.InfrastructureNamespace}
+		gwAddr := kubernetes.GatewayAndHTTPRoutesMustBeAccepted(t, suite.Client, suite.TimeoutConfig, suite.ControllerName, kubernetes.NewGatewayRef(gwNN), routeNN)
+		kubernetes.HTTPRouteMustHaveResolvedRefsConditionsTrue(t, suite.Client, suite.TimeoutConfig, routeNN, gwNN)
 
 		t.Run("Simple HTTP request should reach web-backend", func(t *testing.T) {
 			http.MakeRequestAndExpectEventuallyConsistentResponse(t, suite.RoundTripper, suite.TimeoutConfig, gwAddr, http.ExpectedResponse{
-				Request:    http.Request{Path: "/"},
-				StatusCode: 200,
-				Backend:    "web-backend",
-				Namespace:  "gateway-conformance-web-backend",
+				Request:   http.Request{Path: "/"},
+				Response:  http.Response{StatusCode: 200},
+				Backend:   "web-backend",
+				Namespace: confsuite.WebBackendNamespace,
 			})
 		})
 	},

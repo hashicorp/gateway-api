@@ -23,41 +23,50 @@ import (
 
 	"sigs.k8s.io/gateway-api/conformance/utils/http"
 	"sigs.k8s.io/gateway-api/conformance/utils/kubernetes"
-	"sigs.k8s.io/gateway-api/conformance/utils/suite"
+	confsuite "sigs.k8s.io/gateway-api/conformance/utils/suite"
+	"sigs.k8s.io/gateway-api/pkg/features"
 )
 
 func init() {
-	ConformanceTests = append(ConformanceTests, HTTPExactPathMatching)
+	ConformanceTests = append(ConformanceTests, HTTPRouteExactPathMatching)
 }
 
-var HTTPExactPathMatching = suite.ConformanceTest{
-	ShortName:   "HTTPExactPathMatching",
+var HTTPRouteExactPathMatching = confsuite.ConformanceTest{
+	ShortName:   "HTTPRouteExactPathMatching",
 	Description: "A single HTTPRoute with exact path matching for different backends",
-	Manifests:   []string{"tests/httproute-exact-path-matching.yaml"},
-	Test: func(t *testing.T, suite *suite.ConformanceTestSuite) {
-		ns := "gateway-conformance-infra"
+	Features: []features.FeatureName{
+		features.SupportGateway,
+		features.SupportHTTPRoute,
+	},
+	Manifests: []string{"tests/httproute-exact-path-matching.yaml"},
+	Test: func(t *testing.T, suite *confsuite.ConformanceTestSuite) {
+		ns := confsuite.InfrastructureNamespace
 		routeNN := types.NamespacedName{Name: "exact-matching", Namespace: ns}
 		gwNN := types.NamespacedName{Name: "same-namespace", Namespace: ns}
-		gwAddr := kubernetes.GatewayAndHTTPRoutesMustBeReady(t, suite.Client, suite.TimeoutConfig, suite.ControllerName, kubernetes.NewGatewayRef(gwNN), routeNN)
+		gwAddr := kubernetes.GatewayAndHTTPRoutesMustBeAccepted(t, suite.Client, suite.TimeoutConfig, suite.ControllerName, kubernetes.NewGatewayRef(gwNN), routeNN)
+		kubernetes.HTTPRouteMustHaveResolvedRefsConditionsTrue(t, suite.Client, suite.TimeoutConfig, routeNN, gwNN)
 
 		testCases := []http.ExpectedResponse{
 			{
 				Request:   http.Request{Path: "/one"},
-				Backend:   "infra-backend-v1",
+				Backend:   confsuite.InfraBackendServiceNameV1,
 				Namespace: ns,
 			}, {
 				Request:   http.Request{Path: "/two"},
-				Backend:   "infra-backend-v2",
+				Backend:   confsuite.InfraBackendServiceNameV2,
 				Namespace: ns,
 			}, {
-				Request:    http.Request{Path: "/"},
-				StatusCode: 404,
+				Request:  http.Request{Path: "/"},
+				Response: http.Response{StatusCode: 404},
 			}, {
-				Request:    http.Request{Path: "/one/example"},
-				StatusCode: 404,
+				Request:  http.Request{Path: "/one/example"},
+				Response: http.Response{StatusCode: 404},
 			}, {
-				Request:    http.Request{Path: "/two/"},
-				StatusCode: 404,
+				Request:  http.Request{Path: "/two/"},
+				Response: http.Response{StatusCode: 404},
+			}, {
+				Request:  http.Request{Path: "/Two"},
+				Response: http.Response{StatusCode: 404},
 			},
 		}
 

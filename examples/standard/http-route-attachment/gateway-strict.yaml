@@ -2,8 +2,8 @@
 # SPDX-License-Identifier: Apache-2.0
 
 #$ Used in:
-#$ - site-src/concepts/api-overview.md
-apiVersion: gateway.networking.k8s.io/v1beta1
+#$ - docs/concepts/api-overview.md
+apiVersion: gateway.networking.k8s.io/v1
 kind: Gateway
 metadata:
   name: foo-gateway
@@ -15,8 +15,8 @@ spec:
     port: 80
     protocol: HTTP
     allowedRoutes:
-      kinds: 
-        - kind: HTTPRoute
+      kinds:
+      - kind: HTTPRoute
       namespaces:
         from: Selector
         selector:

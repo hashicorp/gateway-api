@@ -1,0 +1,22 @@
+# Copyright IBM Corp. 2019, 2022
+# SPDX-License-Identifier: Apache-2.0
+
+#$ Used in:
+#$ - guides/user-guides/grpc-routing.md
+apiVersion: gateway.networking.k8s.io/v1
+kind: GRPCRoute
+metadata:
+  name: foo-route
+spec:
+  parentRefs:
+  - name: example-gateway
+  hostnames:
+  - "foo.example.com"
+  rules:
+  - matches:
+    - method:
+        service: com.example
+        method: Login
+    backendRefs:
+    - name: foo-svc
+      port: 50051

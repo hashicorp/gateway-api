@@ -15,46 +15,50 @@
 # limitations under the License.
 
 set -o errexit
-set -o nounset
 set -o pipefail
 
-thisyear=`date +"%Y"`
+CHANNELS=(standard experimental)
+
+if [ "$1" == "--experimental-only" ]; then
+    CHANNELS=(experimental)
+    shift
+fi
+
+set -o nounset
+
+readonly YEAR=$(date +"%Y")
 
 mkdir -p release/
 
-# Make clean files with boilerplate
-cat hack/boilerplate/boilerplate.sh.txt > release/experimental-install.yaml
-sed -i "s/YEAR/$thisyear/g" release/experimental-install.yaml
-cat << EOF >> release/experimental-install.yaml
+for CHANNEL in "${CHANNELS[@]}"; do
+    echo $CHANNEL
+    # Make clean files with boilerplate
+    cat hack/boilerplate/boilerplate.sh.txt > release/${CHANNEL}-install.yaml
+
+    if [[ "$OSTYPE" == "linux-gnu"* ]]; then
+        sed -i "s/YEAR/${YEAR}/g" release/${CHANNEL}-install.yaml
+    elif [[ "$OSTYPE" == "darwin"* ]]; then
+        sed -i '' "s/YEAR/${YEAR}/g" release/${CHANNEL}-install.yaml
+    else
+        echo "Unsupported OS"
+        exit 1
+    fi
+
+    cat << EOF >> release/${CHANNEL}-install.yaml
 #
-# Gateway API Experimental channel install
+# Gateway API ${CHANNEL^} channel install
 #
 EOF
 
-cat hack/boilerplate/boilerplate.sh.txt > release/standard-install.yaml
-sed -i "s/YEAR/$thisyear/g" release/standard-install.yaml
-cat << EOF >> release/standard-install.yaml
-#
-# Gateway API Standard channel install
-#
-EOF
+    for file in config/crd/${CHANNEL}/gateway*.yaml
+    do
+        echo "---" >> release/${CHANNEL}-install.yaml
+        echo "#" >> release/${CHANNEL}-install.yaml
+        echo "# $file" >> release/${CHANNEL}-install.yaml
+        echo "#" >> release/${CHANNEL}-install.yaml
+        cat "$file" >> release/${CHANNEL}-install.yaml
+    done
 
-for file in `ls config/webhook/*.yaml config/crd/experimental/gateway*.yaml`
-do
-    echo "---" >> release/experimental-install.yaml
-    echo "#" >> release/experimental-install.yaml
-    echo "# $file" >> release/experimental-install.yaml
-    echo "#" >> release/experimental-install.yaml
-    cat $file >> release/experimental-install.yaml
-done
-
-for file in `ls config/webhook/*.yaml config/crd/standard/*.yaml`
-do
-    echo "---" >> release/standard-install.yaml
-    echo "#" >> release/standard-install.yaml
-    echo "# $file" >> release/standard-install.yaml
-    echo "#" >> release/standard-install.yaml
-    cat $file >> release/standard-install.yaml
 done
 
 echo "Generated:" release/*-install.yaml

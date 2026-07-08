@@ -22,22 +22,27 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 
-	"sigs.k8s.io/gateway-api/apis/v1beta1"
+	v1 "sigs.k8s.io/gateway-api/apis/v1"
 	"sigs.k8s.io/gateway-api/conformance/utils/http"
 	"sigs.k8s.io/gateway-api/conformance/utils/kubernetes"
-	"sigs.k8s.io/gateway-api/conformance/utils/suite"
+	confsuite "sigs.k8s.io/gateway-api/conformance/utils/suite"
+	"sigs.k8s.io/gateway-api/pkg/features"
 )
 
 func init() {
 	ConformanceTests = append(ConformanceTests, HTTPRouteHostnameIntersection)
 }
 
-var HTTPRouteHostnameIntersection = suite.ConformanceTest{
+var HTTPRouteHostnameIntersection = confsuite.ConformanceTest{
 	ShortName:   "HTTPRouteHostnameIntersection",
 	Description: "HTTPRoutes should attach to listeners only if they have intersecting hostnames, and should accept requests only for the intersecting hostnames",
-	Manifests:   []string{"tests/httproute-hostname-intersection.yaml"},
-	Test: func(t *testing.T, suite *suite.ConformanceTestSuite) {
-		ns := "gateway-conformance-infra"
+	Features: []features.FeatureName{
+		features.SupportGateway,
+		features.SupportHTTPRoute,
+	},
+	Manifests: []string{"tests/httproute-hostname-intersection.yaml"},
+	Test: func(t *testing.T, suite *confsuite.ConformanceTestSuite) {
+		ns := confsuite.InfrastructureNamespace
 		gwNN := types.NamespacedName{Name: "httproute-hostname-intersection", Namespace: ns}
 
 		// This test creates an additional Gateway in the gateway-conformance-infra
@@ -51,7 +56,10 @@ var HTTPRouteHostnameIntersection = suite.ConformanceTest{
 				{Namespace: ns, Name: "wildcard-host-matches-listener-specific-host"},
 				{Namespace: ns, Name: "wildcard-host-matches-listener-wildcard-host"},
 			}
-			gwAddr := kubernetes.GatewayAndHTTPRoutesMustBeReady(t, suite.Client, suite.TimeoutConfig, suite.ControllerName, kubernetes.NewGatewayRef(gwNN), routes...)
+			gwAddr := kubernetes.GatewayAndHTTPRoutesMustBeAccepted(t, suite.Client, suite.TimeoutConfig, suite.ControllerName, kubernetes.NewGatewayRef(gwNN), routes...)
+			for _, routeNN := range routes {
+				kubernetes.HTTPRouteMustHaveResolvedRefsConditionsTrue(t, suite.Client, suite.TimeoutConfig, routeNN, gwNN)
+			}
 
 			var testCases []http.ExpectedResponse
 
@@ -59,24 +67,31 @@ var HTTPRouteHostnameIntersection = suite.ConformanceTest{
 			testCases = append(testCases,
 				http.ExpectedResponse{
 					Request:   http.Request{Host: "very.specific.com", Path: "/s1"},
-					Backend:   "infra-backend-v1",
+					Backend:   confsuite.InfraBackendServiceNameV1,
+					Namespace: ns,
+				},
+				// Port value within the Host header MUST not be considered while
+				// performing match against hostname.
+				http.ExpectedResponse{
+					Request:   http.Request{Host: "very.specific.com:1234", Path: "/s1"},
+					Backend:   confsuite.InfraBackendServiceNameV1,
 					Namespace: ns,
 				},
 				http.ExpectedResponse{
-					Request:    http.Request{Host: "non.matching.com", Path: "/s1"},
-					StatusCode: 404,
+					Request:  http.Request{Host: "non.matching.com", Path: "/s1"},
+					Response: http.Response{StatusCode: 404},
 				},
 				http.ExpectedResponse{
-					Request:    http.Request{Host: "foo.nonmatchingwildcard.io", Path: "/s1"},
-					StatusCode: 404,
+					Request:  http.Request{Host: "foo.nonmatchingwildcard.io", Path: "/s1"},
+					Response: http.Response{StatusCode: 404},
 				},
 				http.ExpectedResponse{
-					Request:    http.Request{Host: "foo.wildcard.io", Path: "/s1"},
-					StatusCode: 404,
+					Request:  http.Request{Host: "foo.wildcard.io", Path: "/s1"},
+					Response: http.Response{StatusCode: 404},
 				},
 				http.ExpectedResponse{
-					Request:    http.Request{Host: "very.specific.com", Path: "/non-matching-prefix"},
-					StatusCode: 404,
+					Request:  http.Request{Host: "very.specific.com", Path: "/non-matching-prefix"},
+					Response: http.Response{StatusCode: 404},
 				},
 			)
 
@@ -84,35 +99,35 @@ var HTTPRouteHostnameIntersection = suite.ConformanceTest{
 			testCases = append(testCases,
 				http.ExpectedResponse{
 					Request:   http.Request{Host: "foo.wildcard.io", Path: "/s2"},
-					Backend:   "infra-backend-v2",
+					Backend:   confsuite.InfraBackendServiceNameV2,
 					Namespace: ns,
 				},
 				http.ExpectedResponse{
 					Request:   http.Request{Host: "bar.wildcard.io", Path: "/s2"},
-					Backend:   "infra-backend-v2",
+					Backend:   confsuite.InfraBackendServiceNameV2,
 					Namespace: ns,
 				},
 				http.ExpectedResponse{
 					Request:   http.Request{Host: "foo.bar.wildcard.io", Path: "/s2"},
-					Backend:   "infra-backend-v2",
+					Backend:   confsuite.InfraBackendServiceNameV2,
 					Namespace: ns,
 				},
 				http.ExpectedResponse{
-					Request:    http.Request{Host: "non.matching.com", Path: "/s2"},
-					StatusCode: 404,
+					Request:  http.Request{Host: "non.matching.com", Path: "/s2"},
+					Response: http.Response{StatusCode: 404},
 				},
 				http.ExpectedResponse{
-					Request:    http.Request{Host: "wildcard.io", Path: "/s2"},
-					StatusCode: 404,
+					Request:  http.Request{Host: "wildcard.io", Path: "/s2"},
+					Response: http.Response{StatusCode: 404},
 				},
 
 				http.ExpectedResponse{
-					Request:    http.Request{Host: "very.specific.com", Path: "/s2"},
-					StatusCode: 404,
+					Request:  http.Request{Host: "very.specific.com", Path: "/s2"},
+					Response: http.Response{StatusCode: 404},
 				},
 				http.ExpectedResponse{
-					Request:    http.Request{Host: "foo.wildcard.io", Path: "/non-matching-prefix"},
-					StatusCode: 404,
+					Request:  http.Request{Host: "foo.wildcard.io", Path: "/non-matching-prefix"},
+					Response: http.Response{StatusCode: 404},
 				},
 			)
 
@@ -120,24 +135,24 @@ var HTTPRouteHostnameIntersection = suite.ConformanceTest{
 			testCases = append(testCases,
 				http.ExpectedResponse{
 					Request:   http.Request{Host: "very.specific.com", Path: "/s3"},
-					Backend:   "infra-backend-v3",
+					Backend:   confsuite.InfraBackendServiceNameV3,
 					Namespace: ns,
 				},
 				http.ExpectedResponse{
-					Request:    http.Request{Host: "non.matching.com", Path: "/s3"},
-					StatusCode: 404,
+					Request:  http.Request{Host: "non.matching.com", Path: "/s3"},
+					Response: http.Response{StatusCode: 404},
 				},
 				http.ExpectedResponse{
-					Request:    http.Request{Host: "foo.specific.com", Path: "/s3"},
-					StatusCode: 404,
+					Request:  http.Request{Host: "foo.specific.com", Path: "/s3"},
+					Response: http.Response{StatusCode: 404},
 				},
 				http.ExpectedResponse{
-					Request:    http.Request{Host: "foo.wildcard.io", Path: "/s3"},
-					StatusCode: 404,
+					Request:  http.Request{Host: "foo.wildcard.io", Path: "/s3"},
+					Response: http.Response{StatusCode: 404},
 				},
 				http.ExpectedResponse{
-					Request:    http.Request{Host: "very.specific.com", Path: "/non-matching-prefix"},
-					StatusCode: 404,
+					Request:  http.Request{Host: "very.specific.com", Path: "/non-matching-prefix"},
+					Response: http.Response{StatusCode: 404},
 				},
 			)
 
@@ -145,35 +160,35 @@ var HTTPRouteHostnameIntersection = suite.ConformanceTest{
 			testCases = append(testCases,
 				http.ExpectedResponse{
 					Request:   http.Request{Host: "foo.anotherwildcard.io", Path: "/s4"},
-					Backend:   "infra-backend-v1",
+					Backend:   confsuite.InfraBackendServiceNameV1,
 					Namespace: ns,
 				},
 				http.ExpectedResponse{
 					Request:   http.Request{Host: "bar.anotherwildcard.io", Path: "/s4"},
-					Backend:   "infra-backend-v1",
+					Backend:   confsuite.InfraBackendServiceNameV1,
 					Namespace: ns,
 				},
 				http.ExpectedResponse{
 					Request:   http.Request{Host: "foo.bar.anotherwildcard.io", Path: "/s4"},
-					Backend:   "infra-backend-v1",
+					Backend:   confsuite.InfraBackendServiceNameV1,
 					Namespace: ns,
 				},
 				http.ExpectedResponse{
-					Request:    http.Request{Host: "anotherwildcard.io", Path: "/s4"},
-					StatusCode: 404,
+					Request:  http.Request{Host: "anotherwildcard.io", Path: "/s4"},
+					Response: http.Response{StatusCode: 404},
 				},
 
 				http.ExpectedResponse{
-					Request:    http.Request{Host: "foo.wildcard.io", Path: "/s4"},
-					StatusCode: 404,
+					Request:  http.Request{Host: "foo.wildcard.io", Path: "/s4"},
+					Response: http.Response{StatusCode: 404},
 				},
 				http.ExpectedResponse{
-					Request:    http.Request{Host: "very.specific.com", Path: "/s4"},
-					StatusCode: 404,
+					Request:  http.Request{Host: "very.specific.com", Path: "/s4"},
+					Response: http.Response{StatusCode: 404},
 				},
 				http.ExpectedResponse{
-					Request:    http.Request{Host: "foo.anotherwildcard.io", Path: "/non-matching-prefix"},
-					StatusCode: 404,
+					Request:  http.Request{Host: "foo.anotherwildcard.io", Path: "/non-matching-prefix"},
+					Response: http.Response{StatusCode: 404},
 				},
 			)
 
@@ -189,33 +204,157 @@ var HTTPRouteHostnameIntersection = suite.ConformanceTest{
 		})
 
 		t.Run("HTTPRoutes that do not intersect with listener hostnames", func(t *testing.T) {
-			gwAddr := kubernetes.GatewayAndHTTPRoutesMustBeReady(t, suite.Client, suite.TimeoutConfig, suite.ControllerName, kubernetes.NewGatewayRef(gwNN))
+			gwAddr := kubernetes.GatewayAndHTTPRoutesMustBeAccepted(t, suite.Client, suite.TimeoutConfig, suite.ControllerName, kubernetes.NewGatewayRef(gwNN))
+			routeNN := types.NamespacedName{Namespace: ns, Name: "no-intersecting-hosts"}
 
-			routeName := types.NamespacedName{Namespace: ns, Name: "no-intersecting-hosts"}
-			parents := []v1beta1.RouteParentStatus{{
+			parents := []v1.RouteParentStatus{{
 				ParentRef:      parentRefTo(gwNN),
-				ControllerName: v1beta1.GatewayController(suite.ControllerName),
+				ControllerName: v1.GatewayController(suite.ControllerName),
 				Conditions: []metav1.Condition{
 					{
-						Type:   string(v1beta1.RouteConditionAccepted),
+						Type:   string(v1.RouteConditionAccepted),
 						Status: metav1.ConditionFalse,
-						Reason: string(v1beta1.RouteReasonNoMatchingListenerHostname),
+						Reason: string(v1.RouteReasonNoMatchingListenerHostname),
 					},
 				},
 			}}
 
-			kubernetes.HTTPRouteMustHaveParents(t, suite.Client, suite.TimeoutConfig, routeName, parents, true)
+			kubernetes.HTTPRouteMustHaveParents(t, suite.Client, suite.TimeoutConfig, routeNN, parents, true)
 
 			testCases := []http.ExpectedResponse{
 				{
-					Request:    http.Request{Host: "specific.but.wrong.com", Path: "/s5"},
-					StatusCode: 404,
+					Request:  http.Request{Host: "specific.but.wrong.com", Path: "/s5"},
+					Response: http.Response{StatusCode: 404},
 				},
 				{
-					Request:    http.Request{Host: "wildcard.io", Path: "/s5"},
-					StatusCode: 404,
+					Request:  http.Request{Host: "wildcard.io", Path: "/s5"},
+					Response: http.Response{StatusCode: 404},
 				},
 			}
+
+			for i := range testCases {
+				// Declare tc here to avoid loop variable
+				// reuse issues across parallel tests.
+				tc := testCases[i]
+				t.Run(tc.GetTestCaseName(i), func(t *testing.T) {
+					t.Parallel()
+					http.MakeRequestAndExpectEventuallyConsistentResponse(t, suite.RoundTripper, suite.TimeoutConfig, gwAddr, tc)
+				})
+			}
+		})
+
+		t.Run("HTTPRoutes have to be counted in AttachedRoutes only if they are Accepted", func(t *testing.T) {
+			// HTTPRoute no-intersecting-hosts should not be attached to any of the listeners.
+			listeners := []v1.ListenerStatus{
+				{
+					Name: v1.SectionName("listener-1"),
+					SupportedKinds: []v1.RouteGroupKind{{
+						Group: (*v1.Group)(&v1.GroupVersion.Group),
+						Kind:  v1.Kind("HTTPRoute"),
+					}},
+					Conditions: []metav1.Condition{
+						{
+							Type:   string(v1.ListenerConditionAccepted),
+							Status: metav1.ConditionTrue,
+							Reason: "", // any reason
+						},
+						{
+							Type:   string(v1.ListenerConditionResolvedRefs),
+							Status: metav1.ConditionTrue,
+							Reason: "", // any reason
+						},
+					},
+					AttachedRoutes: 2, // HTTPRoute specific-host-matches-listener-specific-host and wildcard-host-matches-listener-specific-host
+				},
+				{
+					Name: v1.SectionName("listener-2"),
+					SupportedKinds: []v1.RouteGroupKind{{
+						Group: (*v1.Group)(&v1.GroupVersion.Group),
+						Kind:  v1.Kind("HTTPRoute"),
+					}},
+					Conditions: []metav1.Condition{
+						{
+							Type:   string(v1.ListenerConditionAccepted),
+							Status: metav1.ConditionTrue,
+							Reason: "", // any reason
+						},
+						{
+							Type:   string(v1.ListenerConditionResolvedRefs),
+							Status: metav1.ConditionTrue,
+							Reason: "", // any reason
+						},
+					},
+					AttachedRoutes: 1, // HTTPRoute wildcard-host-matches-listener-wildcard-host
+				},
+				{
+					Name: v1.SectionName("listener-3"),
+					SupportedKinds: []v1.RouteGroupKind{{
+						Group: (*v1.Group)(&v1.GroupVersion.Group),
+						Kind:  v1.Kind("HTTPRoute"),
+					}},
+					Conditions: []metav1.Condition{
+						{
+							Type:   string(v1.ListenerConditionAccepted),
+							Status: metav1.ConditionTrue,
+							Reason: "", // any reason
+						},
+						{
+							Type:   string(v1.ListenerConditionResolvedRefs),
+							Status: metav1.ConditionTrue,
+							Reason: "", // any reason
+						},
+					},
+					AttachedRoutes: 1, // HTTPRoute wildcard-host-matches-listener-wildcard-host
+				},
+			}
+
+			kubernetes.GatewayStatusMustHaveListeners(t, suite.Client, suite.TimeoutConfig, gwNN, listeners)
+		})
+
+		t.Run("HTTPRoutes intersects with an unspecified hostname listener", func(t *testing.T) {
+			routes := []types.NamespacedName{
+				{Namespace: ns, Name: "httproute-hostname-intersection-all"},
+			}
+			gwNN := types.NamespacedName{Name: "httproute-hostname-intersection-all", Namespace: ns}
+			gwAddr := kubernetes.GatewayAndHTTPRoutesMustBeAccepted(t, suite.Client, suite.TimeoutConfig, suite.ControllerName, kubernetes.NewGatewayRef(gwNN), routes...)
+			for _, routeNN := range routes {
+				kubernetes.HTTPRouteMustHaveResolvedRefsConditionsTrue(t, suite.Client, suite.TimeoutConfig, routeNN, gwNN)
+			}
+
+			var testCases []http.ExpectedResponse
+			testCases = append(testCases,
+				http.ExpectedResponse{
+					Request:   http.Request{Host: "first.com", Path: "/"},
+					Backend:   confsuite.InfraBackendServiceNameV2,
+					Namespace: ns,
+				},
+				http.ExpectedResponse{
+					Request:   http.Request{Host: "sub.first.com", Path: "/"},
+					Backend:   confsuite.InfraBackendServiceNameV2,
+					Namespace: ns,
+				},
+				http.ExpectedResponse{
+					Request:   http.Request{Host: "second.com", Path: "/"},
+					Backend:   confsuite.InfraBackendServiceNameV2,
+					Namespace: ns,
+				},
+				http.ExpectedResponse{
+					Request:   http.Request{Host: "sub.second.com", Path: "/"},
+					Backend:   confsuite.InfraBackendServiceNameV2,
+					Namespace: ns,
+				},
+				// Following should fail since it is not specified on the HTTPRoute
+				http.ExpectedResponse{
+					Request:   http.Request{Host: "third.com", Path: "/"},
+					Namespace: ns,
+					Response:  http.Response{StatusCode: 404},
+				},
+				http.ExpectedResponse{
+					Request:   http.Request{Host: "sub.third.com", Path: "/"},
+					Namespace: ns,
+					Response:  http.Response{StatusCode: 404},
+				},
+			)
 
 			for i := range testCases {
 				// Declare tc here to avoid loop variable
@@ -230,15 +369,15 @@ var HTTPRouteHostnameIntersection = suite.ConformanceTest{
 	},
 }
 
-func parentRefTo(gateway types.NamespacedName) v1beta1.ParentReference {
+func parentRefTo(gateway types.NamespacedName) v1.ParentReference {
 	var (
-		group     = v1beta1.Group(v1beta1.GroupName)
-		kind      = v1beta1.Kind("Gateway")
-		namespace = v1beta1.Namespace(gateway.Namespace)
-		name      = v1beta1.ObjectName(gateway.Name)
+		group     = v1.Group(v1.GroupName)
+		kind      = v1.Kind("Gateway")
+		namespace = v1.Namespace(gateway.Namespace)
+		name      = v1.ObjectName(gateway.Name)
 	)
 
-	return v1beta1.ParentReference{
+	return v1.ParentReference{
 		Group:     &group,
 		Kind:      &kind,
 		Namespace: &namespace,

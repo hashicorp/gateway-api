@@ -20,6 +20,15 @@ set -o errexit
 set -o nounset
 set -o pipefail
 
+if [[ -z "${VERIFY-}" ]];
+then
+  export DOCKER_PUSH_FLAG="--push"
+  export BUILDX_PLATFORMS="linux/amd64,linux/arm64"
+else
+  export DOCKER_PUSH_FLAG=""
+  export BUILDX_PLATFORMS="linux/amd64"
+fi
+
 if [[ -z "${GIT_TAG-}" ]];
 then
     echo "GIT_TAG env var must be set and nonempty."
@@ -44,6 +53,8 @@ then
     exit 1
 fi
 
+
+
 # If our base ref == "main" then we will tag :latest.
 VERSION_TAG=latest
 
@@ -62,12 +73,23 @@ then
     BINARY_TAG="${BASE_REF}"
 fi
 
-# First, build the image, with the version info passed in.
-# Note that an image will *always* be built tagged with the GIT_TAG, so we know when it was built.
-docker build --build-arg COMMIT=${COMMIT} --build-arg TAG=${BINARY_TAG} \
-  			-t ${REGISTRY}/admission-server:${GIT_TAG} .
-docker push ${REGISTRY}/admission-server:${GIT_TAG}
 
-# Then, we add an extra version tag - either :latest or semver.
-docker tag ${REGISTRY}/admission-server:${GIT_TAG} ${REGISTRY}/admission-server:${VERSION_TAG}
-docker push ${REGISTRY}/admission-server:${VERSION_TAG}
+echo "Building and pushing echo-advanced image (from Istio) ...${BUILDX_PLATFORMS}"
+
+docker buildx build \
+    -t ${REGISTRY}/echo-advanced:${GIT_TAG} \
+    -t ${REGISTRY}/echo-advanced:${VERSION_TAG} \
+    --platform ${BUILDX_PLATFORMS} \
+    ${DOCKER_PUSH_FLAG} \
+    -f docker/Dockerfile.echo-advanced \
+    .
+
+echo "Building and pushing echo-basic image (previously in Ingress Controller Conformance Repo) ...${BUILDX_PLATFORMS}"
+
+docker buildx build \
+    -t ${REGISTRY}/echo-basic:${GIT_TAG} \
+    -t ${REGISTRY}/echo-basic:${VERSION_TAG} \
+    --platform ${BUILDX_PLATFORMS} \
+    ${DOCKER_PUSH_FLAG} \
+    -f docker/Dockerfile.echo-basic \
+    .

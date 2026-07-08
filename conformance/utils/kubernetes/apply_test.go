@@ -23,9 +23,6 @@ import (
 	"github.com/stretchr/testify/require"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/util/yaml"
-
-	"sigs.k8s.io/gateway-api/apis/v1beta1"
-	_ "sigs.k8s.io/gateway-api/conformance/utils/flags"
 )
 
 func TestPrepareResources(t *testing.T) {
@@ -44,10 +41,10 @@ metadata:
   name: test
 `,
 		expected: []unstructured.Unstructured{{
-			Object: map[string]interface{}{
+			Object: map[string]any{
 				"apiVersion": "v1",
 				"kind":       "Namespace",
-				"metadata": map[string]interface{}{
+				"metadata": map[string]any{
 					"name": "test",
 				},
 			},
@@ -66,12 +63,12 @@ metadata:
   name: test
 `,
 		expected: []unstructured.Unstructured{{
-			Object: map[string]interface{}{
+			Object: map[string]any{
 				"apiVersion": "v1",
 				"kind":       "Namespace",
-				"metadata": map[string]interface{}{
+				"metadata": map[string]any{
 					"name": "test",
-					"labels": map[string]interface{}{
+					"labels": map[string]any{
 						"test": "false",
 					},
 				},
@@ -93,22 +90,22 @@ metadata:
     test: 'false'
 `,
 		expected: []unstructured.Unstructured{{
-			Object: map[string]interface{}{
+			Object: map[string]any{
 				"apiVersion": "v1",
 				"kind":       "Namespace",
-				"metadata": map[string]interface{}{
+				"metadata": map[string]any{
 					"name": "test",
-					"labels": map[string]interface{}{
+					"labels": map[string]any{
 						"test": "true",
 					},
 				},
 			},
 		}},
 	}, {
-		name:    "no listener ports given",
+		name:    "setting the gatewayClassName",
 		applier: Applier{},
 		given: `
-apiVersion: gateway.networking.k8s.io/v1beta1
+apiVersion: gateway.networking.k8s.io/v1
 kind:       Gateway
 metadata:
   name: test
@@ -123,21 +120,21 @@ spec:
           from: Same
 `,
 		expected: []unstructured.Unstructured{{
-			Object: map[string]interface{}{
-				"apiVersion": "gateway.networking.k8s.io/v1beta1",
+			Object: map[string]any{
+				"apiVersion": "gateway.networking.k8s.io/v1",
 				"kind":       "Gateway",
-				"metadata": map[string]interface{}{
+				"metadata": map[string]any{
 					"name": "test",
 				},
-				"spec": map[string]interface{}{
+				"spec": map[string]any{
 					"gatewayClassName": "test-class",
-					"listeners": []interface{}{
-						map[string]interface{}{
+					"listeners": []any{
+						map[string]any{
 							"name":     "http",
 							"port":     int64(80),
 							"protocol": "HTTP",
-							"allowedRoutes": map[string]interface{}{
-								"namespaces": map[string]interface{}{
+							"allowedRoutes": map[string]any{
+								"namespaces": map[string]any{
 									"from": "Same",
 								},
 							},
@@ -147,115 +144,25 @@ spec:
 			},
 		}},
 	}, {
-		name: "multiple gateways each with multiple listeners",
-		applier: Applier{
-			ValidUniqueListenerPorts: []v1beta1.PortNumber{8000, 8001, 8002, 8003},
-		},
+		name:    "setting the controllerName for a GatewayClass",
+		applier: Applier{},
 		given: `
-apiVersion: gateway.networking.k8s.io/v1beta1
-kind:       Gateway
+apiVersion: gateway.networking.k8s.io/v1
+kind:       GatewayClass
 metadata:
   name: test
 spec:
-  gatewayClassName: {GATEWAY_CLASS_NAME}
-  listeners:
-    - name: http
-      port: 80
-      protocol: HTTP
-      allowedRoutes:
-        namespaces:
-          from: Same
-    - name: https
-      port: 443
-      protocol: HTTPS
-      allowedRoutes:
-        namespaces:
-          from: Same
----
-apiVersion: gateway.networking.k8s.io/v1beta1
-kind:       Gateway
-metadata:
-  name: test2
-spec:
-  gatewayClassName: {GATEWAY_CLASS_NAME}
-  listeners:
-    - name: http
-      port: 80
-      protocol: HTTP
-      allowedRoutes:
-        namespaces:
-          from: Same
-    - name: https
-      port: 443
-      protocol: HTTPS
-      allowedRoutes:
-        namespaces:
-          from: Same
+  controllerName: {GATEWAY_CONTROLLER_NAME}
 `,
 		expected: []unstructured.Unstructured{{
-			Object: map[string]interface{}{
-				"apiVersion": "gateway.networking.k8s.io/v1beta1",
-				"kind":       "Gateway",
-				"metadata": map[string]interface{}{
+			Object: map[string]any{
+				"apiVersion": "gateway.networking.k8s.io/v1",
+				"kind":       "GatewayClass",
+				"metadata": map[string]any{
 					"name": "test",
 				},
-				"spec": map[string]interface{}{
-					"gatewayClassName": "test-class",
-					"listeners": []interface{}{
-						map[string]interface{}{
-							"name":     "http",
-							"port":     int64(8000),
-							"protocol": "HTTP",
-							"allowedRoutes": map[string]interface{}{
-								"namespaces": map[string]interface{}{
-									"from": "Same",
-								},
-							},
-						},
-						map[string]interface{}{
-							"name":     "https",
-							"port":     int64(8001),
-							"protocol": "HTTPS",
-							"allowedRoutes": map[string]interface{}{
-								"namespaces": map[string]interface{}{
-									"from": "Same",
-								},
-							},
-						},
-					},
-				},
-			},
-		}, {
-			Object: map[string]interface{}{
-				"apiVersion": "gateway.networking.k8s.io/v1beta1",
-				"kind":       "Gateway",
-				"metadata": map[string]interface{}{
-					"name": "test2",
-				},
-				"spec": map[string]interface{}{
-					"gatewayClassName": "test-class",
-					"listeners": []interface{}{
-						map[string]interface{}{
-							"name":     "http",
-							"port":     int64(8002),
-							"protocol": "HTTP",
-							"allowedRoutes": map[string]interface{}{
-								"namespaces": map[string]interface{}{
-									"from": "Same",
-								},
-							},
-						},
-						map[string]interface{}{
-							"name":     "https",
-							"port":     int64(8003),
-							"protocol": "HTTPS",
-							"allowedRoutes": map[string]interface{}{
-								"namespaces": map[string]interface{}{
-									"from": "Same",
-								},
-							},
-						},
-					},
+				"spec": map[string]any{
+					"controllerName": "test-controller",
 				},
 			},
 		}},
@@ -265,10 +172,12 @@ spec:
 		t.Run(tc.name, func(t *testing.T) {
 			decoder := yaml.NewYAMLOrJSONDecoder(strings.NewReader(tc.given), 4096)
 
-			resources, err := tc.applier.prepareResources(t, decoder, "test-class")
+			tc.applier.GatewayClass = "test-class"
+			tc.applier.ControllerName = "test-controller"
+			resources, err := tc.applier.prepareResources(t, decoder)
 
 			require.NoError(t, err, "unexpected error preparing resources")
-			require.EqualValues(t, tc.expected, resources)
+			require.Equal(t, tc.expected, resources)
 		})
 	}
 }
