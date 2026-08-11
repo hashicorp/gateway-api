@@ -1,0 +1,6 @@
+
+{{- with .GepsDetails }}
+{{- range . }}
+- [GEP-{{ .Number }}: {{ .Name }}](/geps/gep-{{ .Number }}/)
+{{- end }}
+{{- end }}

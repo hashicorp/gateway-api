@@ -1,0 +1,84 @@
+# Copyright IBM Corp. 2019, 2022
+# SPDX-License-Identifier: Apache-2.0
+
+version: 2
+updates:
+  # Dependencies listed in go.mod
+  - package-ecosystem: "gomod"
+    directories:
+    - "/"
+    - "/site"
+    schedule:
+      interval: "weekly"
+    groups:
+      non-k8s:
+        patterns:
+          - "*"
+        exclude-patterns:
+          - "k8s.io/*"
+          - "sigs.k8s.io/*"
+      k8s.io: # Group k8s.io golang dependencies updates
+          patterns:
+            - "k8s.io/*"
+            - "sigs.k8s.io/*"
+    labels:
+      - go
+      - dependencies
+      - ok-to-test
+      - release-note-none
+
+  # Dependencies listed in conformance/echo-basic/go.mod
+  - package-ecosystem: "gomod"
+    directory: "/conformance/echo-basic/" # Location of package manifests
+    schedule:
+      interval: "weekly"
+    groups:
+      non-k8s:
+        patterns:
+          - "*"
+        exclude-patterns:
+          - "k8s.io/*"
+          - "sigs.k8s.io/*"
+      k8s.io: # Group k8s.io golang dependencies updates
+        patterns:
+          - "k8s.io/*"
+          - "sigs.k8s.io/*"
+    labels:
+      - go
+      - dependencies
+      - ok-to-test
+      - release-note-none
+
+  # Dependencies listed in Dockerfile
+  - package-ecosystem: "docker"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    labels:
+      - docker
+      - dependencies
+      - ok-to-test
+      - release-note-none
+
+  #  Github actions updates
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    labels:
+      - "dependencies"
+      - "release-note-none"
+      - "ok-to-test"
+
+  # Dependencies listed in site/package.json
+  - package-ecosystem: "npm"
+    directory: "/site"
+    schedule:
+      interval: "weekly"
+    labels:
+      - javascript
+      - dependencies
+      - ok-to-test
+      - release-note-none
+
+

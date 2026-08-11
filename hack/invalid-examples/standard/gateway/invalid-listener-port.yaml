@@ -1,0 +1,13 @@
+# Copyright IBM Corp. 2019, 2022
+# SPDX-License-Identifier: Apache-2.0
+
+apiVersion: gateway.networking.k8s.io/v1
+kind: Gateway
+metadata:
+  name: invalid-listener-port
+spec:
+  gatewayClassName: example
+  listeners:
+  - name: foo
+    protocol: HTTP
+    port: 123456789

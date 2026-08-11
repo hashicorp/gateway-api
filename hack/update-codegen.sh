@@ -26,7 +26,7 @@ readonly GOMODCACHE="$(go env GOMODCACHE)"
 readonly GO111MODULE="on"
 readonly GOFLAGS="-mod=readonly"
 readonly GOPATH="$(mktemp -d)"
-readonly MIN_REQUIRED_GO_VER="1.19"
+readonly MIN_REQUIRED_GO_VER="$(go list -m -f '{{.GoVersion}}' sigs.k8s.io/gateway-api)"
 
 function go_version_matches {
   go version | perl -ne "exit 1 unless m{go version go([0-9]+.[0-9]+)}; exit 1 if (\$1 < ${MIN_REQUIRED_GO_VER})"
@@ -46,54 +46,8 @@ export GOMODCACHE GO111MODULE GOFLAGS GOPATH
 mkdir -p "$GOPATH/src/sigs.k8s.io"
 ln -s "${SCRIPT_ROOT}" "$GOPATH/src/sigs.k8s.io/gateway-api"
 
-readonly OUTPUT_PKG=sigs.k8s.io/gateway-api/pkg/client
-readonly APIS_PKG=sigs.k8s.io/gateway-api
-readonly CLIENTSET_NAME=versioned
-readonly CLIENTSET_PKG_NAME=clientset
-
-if [[ "${VERIFY_CODEGEN:-}" == "true" ]]; then
-  echo "Running in verification mode"
-  readonly VERIFY_FLAG="--verify-only"
-fi
-
-readonly COMMON_FLAGS="${VERIFY_FLAG:-} --go-header-file ${SCRIPT_ROOT}/hack/boilerplate/boilerplate.generatego.txt"
-
 echo "Generating CRDs"
-go run ./pkg/generator
+go run ./tools/generator
 
-echo "Generating clientset at ${OUTPUT_PKG}/${CLIENTSET_PKG_NAME}"
-go run k8s.io/code-generator/cmd/client-gen \
-  --clientset-name "${CLIENTSET_NAME}" \
-  --input-base "" \
-  --input "${APIS_PKG}/apis/v1alpha2,${APIS_PKG}/apis/v1beta1" \
-  --output-package "${OUTPUT_PKG}/${CLIENTSET_PKG_NAME}" \
-  ${COMMON_FLAGS}
-
-echo "Generating listers at ${OUTPUT_PKG}/listers"
-go run k8s.io/code-generator/cmd/lister-gen \
-  --input-dirs "${APIS_PKG}/apis/v1alpha2,${APIS_PKG}/apis/v1beta1" \
-  --output-package "${OUTPUT_PKG}/listers" \
-  ${COMMON_FLAGS}
-
-echo "Generating informers at ${OUTPUT_PKG}/informers"
-go run k8s.io/code-generator/cmd/informer-gen \
-  --input-dirs "${APIS_PKG}/apis/v1alpha2,${APIS_PKG}/apis/v1beta1" \
-  --versioned-clientset-package "${OUTPUT_PKG}/${CLIENTSET_PKG_NAME}/${CLIENTSET_NAME}" \
-  --listers-package "${OUTPUT_PKG}/listers" \
-  --output-package "${OUTPUT_PKG}/informers" \
-  ${COMMON_FLAGS}
-
-for VERSION in v1alpha2 v1beta1
-do
-  echo "Generating ${VERSION} register at ${APIS_PKG}/apis/${VERSION}"
-  go run k8s.io/code-generator/cmd/register-gen \
-    --input-dirs "${APIS_PKG}/apis/${VERSION}" \
-    --output-package "${APIS_PKG}/apis/${VERSION}" \
-    ${COMMON_FLAGS}
-
-  echo "Generating ${VERSION} deepcopy at ${APIS_PKG}/apis/${VERSION}"
-  go run sigs.k8s.io/controller-tools/cmd/controller-gen \
-    object:headerFile=${SCRIPT_ROOT}/hack/boilerplate/boilerplate.generatego.txt \
-    paths="${APIS_PKG}/apis/${VERSION}" 
-
-done
+./hack/update-clientset.sh
+./hack/update-protos.sh

@@ -19,7 +19,7 @@
 export GO111MODULE=on
 
 # The registry to push container images to.
-export REGISTRY ?= gcr.io/k8s-staging-gateway-api
+export REGISTRY ?= us-central1-docker.pkg.dev/k8s-staging-images/gateway-api
 
 # These are overridden by cloudbuild.yaml when run by Prow.
 
@@ -46,30 +46,51 @@ export COMMIT ?= $(shell git rev-parse --short HEAD)
 DOCKER ?= docker
 # TOP is the current directory where this Makefile lives.
 TOP := $(dir $(firstword $(MAKEFILE_LIST)))
-# ROOT is the root of the mkdocs tree.
+# ROOT is the root of the documentation tree.
 ROOT := $(abspath $(TOP))
 
 # Command-line flags passed to "go test" for the conformance
 # test. These are passed after the "-args" flag.
 CONFORMANCE_FLAGS ?=
+GO_TEST_FLAGS ?=
 
-all: generate vet fmt verify test
+# Flags for CRD validation tests
+CEL_TEST_K8S_VERSION ?= 
+CEL_TEST_CRD_CHANNEL ?= standard
+
+# Flags for docs validation
+# Use this to add extra flags like --offline or --include "github.com/kubernetes"
+# Github is intentionally removed from the checks due to rate limits and because the 
+# anchor validation does not work when pointing to a github code
+VALIDATE_DOCS_EXTRA_FLAGS ?= 
+
+# Compilation flags for binaries
+GOARCH ?= $(shell go env GOARCH)
+GOOS ?= $(shell go env GOOS)
+
+all: generate vet fmt verify test conformance-bin
+
+.PHONY: clean-generated
+clean-generated:
+	rm -rf pkg/client/clientset
+	rm -rf pkg/client/listers
+	rm -rf pkg/client/informers
 
 # Run generators for protos, Deepcopy funcs, CRDs, and docs.
 .PHONY: generate
-generate: update-codegen update-webhook-yaml
+generate: clean-generated update-codegen tidy
 
 .PHONY: update-codegen
 update-codegen:
 	hack/update-codegen.sh
 
-.PHONY: update-webhook-yaml
-update-webhook-yaml:
-	hack/update-webhook-yaml.sh
-
 .PHONY: build-install-yaml
 build-install-yaml:
 	hack/build-install-yaml.sh
+
+.PHONY: build-monthly-yaml
+build-monthly-yaml:
+	hack/build-monthly-yaml.sh
 
 # Run go fmt against code
 fmt:
@@ -81,23 +102,42 @@ vet:
 
 # Run go test against code
 test:
-	go test -race -cover ./pkg/...
+	go test -race -cover ./apis/... ./conformance/utils/...
+# Run tests for each submodule.
+	cd "conformance/echo-basic" && go test -race -cover ./...
+
+.PHONY: tidy
+tidy:
+	go work sync
+	find . -name go.mod -not -path "./site/*" -exec sh -c 'cd "$$(dirname "{}")" && go mod tidy' \;
+
+# Run tests for CRDs validation
+.PHONY: test.crds-validation
+test.crds-validation:
+	K8S_VERSION=$(CEL_TEST_K8S_VERSION) CRD_CHANNEL=$(CEL_TEST_CRD_CHANNEL) go test ${GO_TEST_FLAGS} -count=1 -timeout=120s --tags=$(CEL_TEST_CRD_CHANNEL) -v ./tests/cel
+	K8S_VERSION=$(CEL_TEST_K8S_VERSION) CRD_CHANNEL=$(CEL_TEST_CRD_CHANNEL) go test ${GO_TEST_FLAGS} -count=1 -timeout=120s -v ./tests/crd
+	K8S_VERSION=$(CEL_TEST_K8S_VERSION) CRD_CHANNEL=$(CEL_TEST_CRD_CHANNEL) go test ${GO_TEST_FLAGS} -count=1 -timeout=120s -v ./tests/vap
 
 # Run conformance tests against controller implementation
 .PHONY: conformance
 conformance:
-	go test -v ./conformance/... -args ${CONFORMANCE_FLAGS}
+	go test ${GO_TEST_FLAGS} -v ./conformance -run TestConformance -args ${CONFORMANCE_FLAGS}
 
-# Install CRD's and example resources to a pre-existing cluster.
+# Build a conformance.test binary that can be used as a standalone binary to run conformance test
+.PHONY: conformance-bin
+conformance-bin:
+	GOOS=$(GOOS) GOARCH=$(GOARCH) go test -c -v ./conformance 
+
+# Install CRD's and example resources to a preexisting cluster.
 .PHONY: install
 install: crd example
 
-# Install the CRD's to a pre-existing cluster.
+# Install the CRD's to a preexisting cluster.
 .PHONY: crd
 crd:
 	kubectl kustomize config/crd | kubectl apply -f -
 
-# Install the example resources to a pre-existing cluster.
+# Install the example resources to a preexisting cluster.
 .PHONY: example
 example:
 	hack/install-examples.sh
@@ -112,23 +152,124 @@ uninstall:
 verify:
 	hack/verify-all.sh -v
 
-# Build the documentation.
-.PHONY: docs
-docs:
-	hack/make-docs.sh
+.PHONY: update-conformance-image-refs
+update-conformance-image-refs:
+	hack/update-conformance-image-refs.sh
 
+# Verify if support Docker Buildx.
+.PHONY: image.buildx.verify
+image.buildx.verify:
+	docker version
+	$(eval PASS := $(shell docker buildx --help | grep "docker buildx" ))
+	@if [ -z "$(PASS)" ]; then \
+		echo "Cannot find docker buildx, please install first."; \
+		exit 1;\
+	else \
+		echo "===========> Support docker buildx"; \
+		docker buildx version; \
+	fi
+
+export BUILDX_CONTEXT = gateway-api-builder
+export BUILDX_PLATFORMS = linux/amd64,linux/arm64
+
+# Setup multi-arch docker buildx environment.
+.PHONY: image.multiarch.setup
+image.multiarch.setup: image.buildx.verify
+# Ensure qemu is in binfmt_misc.
+# Docker desktop already has these in versions recent enough to have buildx,
+# We only need to do this setup on linux hosts.
+	@if [ "$(shell uname)" == "Linux" ]; then \
+		docker run --rm --privileged multiarch/qemu-user-static --reset -p yes; \
+	fi
+# Ensure we use a builder that can leverage it, we need to recreate one.
+	docker buildx rm $(BUILDX_CONTEXT) || :
+	docker buildx create --use --name $(BUILDX_CONTEXT) --platform "${BUILDX_PLATFORMS}"
+
+# Build and Push Multi Arch Images.
 .PHONY: release-staging
-release-staging: 
+release-staging: image.multiarch.setup
 	hack/build-and-push.sh
 
-# Generate a virtualenv install, which is useful for hacking on the
-# docs since it installs mkdocs and all the right dependencies.
-#
-# On Ubuntu, this requires the python3-venv package.
-virtualenv: .venv
-.venv: requirements.txt
-	@echo Creating a virtualenv in $@"... "
-	@python3 -m venv $@ || (rm -rf $@ && exit 1)
-	@echo Installing packages in $@"... "
-	@$@/bin/python3 -m pip install -q -r requirements.txt || (rm -rf $@ && exit 1)
-	@echo To enter the virtualenv type \"source $@/bin/activate\",  to exit type \"deactivate\"
+# Docs
+
+PYTHON ?= $(shell if [ -x .venv/bin/python3 ]; then echo "./.venv/bin/python3"; else echo "python3"; fi)
+
+DOCS_VERIFY_CONTAINER_IMAGE ?= registry.hub.docker.com/lycheeverse/lychee:0.23
+
+HUGO_VERSION ?= 0.160.1
+HUGO_IMAGE ?= ghcr.io/gohugoio/hugo:v$(HUGO_VERSION)
+
+# Use Docker for Hugo by default for local development, but not on Netlify
+USE_DOCKER_HUGO ?= true
+ifeq ($(NETLIFY),true)
+	USE_DOCKER_HUGO = false
+endif
+
+ifeq ($(USE_DOCKER_HUGO),true)
+	HUGO = docker run --rm -u $(shell id -u):$(shell id -g) -v $(PWD):/src -w /src -e GOMODCACHE=/src/.gocache -e HUGO_CACHEDIR=/src/.hugocache $(HUGO_IMAGE)
+	HUGO_SERVER = docker run --rm -u $(shell id -u):$(shell id -g) -v $(PWD):/src -w /src -e GOMODCACHE=/src/.gocache -e HUGO_CACHEDIR=/src/.hugocache -p 1313:1313 $(HUGO_IMAGE) server --bind 0.0.0.0
+else
+	HUGO = hugo
+	HUGO_SERVER = hugo server
+endif
+
+# Build the documentation.
+.PHONY: install-deps
+install-deps:
+	cd site && npm install
+	if [ ! -d .venv ]; then python3 -m venv .venv; fi
+	.venv/bin/pip install --index-url https://pypi.org/simple pandas PyYAML semver python-frontmatter tabulate
+
+.PHONY: docs
+docs: install-deps
+	hack/docsy/generate.sh
+	$(HUGO) --source site
+
+.PHONY: build-docs
+build-docs: install-deps update-geps api-ref-docs wizard-wasm wizard-data conformance-data
+	$(HUGO) --source site
+
+.PHONY: verify-docs
+verify-docs: build-docs
+	docker run --init --rm -w /input -v ${PWD}:/input $(DOCS_VERIFY_CONTAINER_IMAGE) --root-dir /input/site/public --include "sigs.k8s.io" --accept 200 --max-concurrency 10 --include-fragments --cache $(VALIDATE_DOCS_EXTRA_FLAGS) /input/site/public/**/*.html
+
+.PHONY: build-docs-netlify
+build-docs-netlify: install-deps update-geps api-ref-docs wizard-wasm wizard-data conformance-data
+	$(HUGO) --source site
+
+.PHONY: live-docs
+live-docs: update-geps api-ref-docs
+	$(HUGO_SERVER) --source site
+
+.PHONY: update-geps
+update-geps:
+	hack/update-geps.sh
+
+.PHONY: api-ref-docs
+api-ref-docs:
+	hack/docsy/generate.sh
+
+.PHONY: wizard-wasm
+wizard-wasm:
+	@mkdir -p site/static/wizard
+	@GOROOT=$$(go env GOROOT); \
+	if [ -f "$$GOROOT/misc/wasm/wasm_exec.js" ]; then cp -f "$$GOROOT/misc/wasm/wasm_exec.js" site/static/wizard/; \
+	elif [ -f "$$GOROOT/lib/wasm/wasm_exec.js" ]; then cp -f "$$GOROOT/lib/wasm/wasm_exec.js" site/static/wizard/; \
+	else echo "ERROR: wasm_exec.js not found in GOROOT"; exit 1; fi
+	GOOS=js GOARCH=wasm go build -o site/static/wizard/main.wasm ./wasm/
+
+# Generate controller wizard data (multi-version). Requires conformance/reports/ with version dirs.
+# Run manually if make serve is used without conformance reports.
+.PHONY: wizard-data
+wizard-data:
+	@mkdir -p site/static/wizard/data
+	$(PYTHON) hack/generate-controller-wizard-data.py --all -o site/static/wizard/data/controller-wizard-data.json
+
+.PHONY: conformance-data
+conformance-data:
+	$(PYTHON) hack/docsy-generate-conformance.py
+
+.PHONY: serve
+serve: wizard-wasm update-geps api-ref-docs
+	@echo "Tip: Run 'make wizard-data' first if you have conformance/reports/ to load implementation data."
+	$(HUGO_SERVER) --source site

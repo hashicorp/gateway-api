@@ -1,0 +1,15 @@
+# Copyright IBM Corp. 2019, 2022
+# SPDX-License-Identifier: Apache-2.0
+
+#$ Used in:
+#$ - reference/api-types/tcproute.md
+apiVersion: gateway.networking.k8s.io/v1
+kind: Gateway
+metadata:
+  name: my-tcp-gateway
+spec:
+  gatewayClassName: example-gateway-class
+  listeners:
+    - name: foo
+      protocol: TCP
+      port: 8080

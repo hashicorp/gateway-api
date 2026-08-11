@@ -19,24 +19,25 @@ limitations under the License.
 package v1alpha2
 
 import (
-	"context"
+	context "context"
 	time "time"
 
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	runtime "k8s.io/apimachinery/pkg/runtime"
+	schema "k8s.io/apimachinery/pkg/runtime/schema"
 	watch "k8s.io/apimachinery/pkg/watch"
 	cache "k8s.io/client-go/tools/cache"
-	apisv1alpha2 "sigs.k8s.io/gateway-api/apis/v1alpha2"
+	gatewayapiapisv1alpha2 "sigs.k8s.io/gateway-api/apis/v1alpha2"
 	versioned "sigs.k8s.io/gateway-api/pkg/client/clientset/versioned"
 	internalinterfaces "sigs.k8s.io/gateway-api/pkg/client/informers/externalversions/internalinterfaces"
-	v1alpha2 "sigs.k8s.io/gateway-api/pkg/client/listers/apis/v1alpha2"
+	apisv1alpha2 "sigs.k8s.io/gateway-api/pkg/client/listers/apis/v1alpha2"
 )
 
 // UDPRouteInformer provides access to a shared informer and lister for
 // UDPRoutes.
 type UDPRouteInformer interface {
 	Informer() cache.SharedIndexInformer
-	Lister() v1alpha2.UDPRouteLister
+	Lister() apisv1alpha2.UDPRouteLister
 }
 
 type uDPRouteInformer struct {
@@ -49,42 +50,67 @@ type uDPRouteInformer struct {
 // Always prefer using an informer factory to get a shared informer instead of getting an independent
 // one. This reduces memory footprint and number of connections to the server.
 func NewUDPRouteInformer(client versioned.Interface, namespace string, resyncPeriod time.Duration, indexers cache.Indexers) cache.SharedIndexInformer {
-	return NewFilteredUDPRouteInformer(client, namespace, resyncPeriod, indexers, nil)
+	return NewUDPRouteInformerWithOptions(client, namespace, internalinterfaces.InformerOptions{ResyncPeriod: resyncPeriod, Indexers: indexers})
 }
 
 // NewFilteredUDPRouteInformer constructs a new informer for UDPRoute type.
 // Always prefer using an informer factory to get a shared informer instead of getting an independent
 // one. This reduces memory footprint and number of connections to the server.
 func NewFilteredUDPRouteInformer(client versioned.Interface, namespace string, resyncPeriod time.Duration, indexers cache.Indexers, tweakListOptions internalinterfaces.TweakListOptionsFunc) cache.SharedIndexInformer {
-	return cache.NewSharedIndexInformer(
-		&cache.ListWatch{
-			ListFunc: func(options v1.ListOptions) (runtime.Object, error) {
+	return NewUDPRouteInformerWithOptions(client, namespace, internalinterfaces.InformerOptions{ResyncPeriod: resyncPeriod, Indexers: indexers, TweakListOptions: tweakListOptions})
+}
+
+// NewUDPRouteInformerWithOptions constructs a new informer for UDPRoute type with additional options.
+// Always prefer using an informer factory to get a shared informer instead of getting an independent
+// one. This reduces memory footprint and number of connections to the server.
+func NewUDPRouteInformerWithOptions(client versioned.Interface, namespace string, options internalinterfaces.InformerOptions) cache.SharedIndexInformer {
+	gvr := schema.GroupVersionResource{Group: "gateway.networking.k8s.io", Version: "v1alpha2", Resource: "udproutes"}
+	identifier := options.InformerName.WithResource(gvr)
+	tweakListOptions := options.TweakListOptions
+	return cache.NewSharedIndexInformerWithOptions(
+		cache.ToListWatcherWithWatchListSemantics(&cache.ListWatch{
+			ListFunc: func(opts v1.ListOptions) (runtime.Object, error) {
 				if tweakListOptions != nil {
-					tweakListOptions(&options)
+					tweakListOptions(&opts)
 				}
-				return client.GatewayV1alpha2().UDPRoutes(namespace).List(context.TODO(), options)
+				return client.GatewayV1alpha2().UDPRoutes(namespace).List(context.Background(), opts)
 			},
-			WatchFunc: func(options v1.ListOptions) (watch.Interface, error) {
+			WatchFunc: func(opts v1.ListOptions) (watch.Interface, error) {
 				if tweakListOptions != nil {
-					tweakListOptions(&options)
+					tweakListOptions(&opts)
 				}
-				return client.GatewayV1alpha2().UDPRoutes(namespace).Watch(context.TODO(), options)
+				return client.GatewayV1alpha2().UDPRoutes(namespace).Watch(context.Background(), opts)
 			},
+			ListWithContextFunc: func(ctx context.Context, opts v1.ListOptions) (runtime.Object, error) {
+				if tweakListOptions != nil {
+					tweakListOptions(&opts)
+				}
+				return client.GatewayV1alpha2().UDPRoutes(namespace).List(ctx, opts)
+			},
+			WatchFuncWithContext: func(ctx context.Context, opts v1.ListOptions) (watch.Interface, error) {
+				if tweakListOptions != nil {
+					tweakListOptions(&opts)
+				}
+				return client.GatewayV1alpha2().UDPRoutes(namespace).Watch(ctx, opts)
+			},
+		}, client),
+		&gatewayapiapisv1alpha2.UDPRoute{},
+		cache.SharedIndexInformerOptions{
+			ResyncPeriod: options.ResyncPeriod,
+			Indexers:     options.Indexers,
+			Identifier:   identifier,
 		},
-		&apisv1alpha2.UDPRoute{},
-		resyncPeriod,
-		indexers,
 	)
 }
 
 func (f *uDPRouteInformer) defaultInformer(client versioned.Interface, resyncPeriod time.Duration) cache.SharedIndexInformer {
-	return NewFilteredUDPRouteInformer(client, f.namespace, resyncPeriod, cache.Indexers{cache.NamespaceIndex: cache.MetaNamespaceIndexFunc}, f.tweakListOptions)
+	return NewUDPRouteInformerWithOptions(client, f.namespace, internalinterfaces.InformerOptions{ResyncPeriod: resyncPeriod, Indexers: cache.Indexers{cache.NamespaceIndex: cache.MetaNamespaceIndexFunc}, InformerName: f.factory.InformerName(), TweakListOptions: f.tweakListOptions})
 }
 
 func (f *uDPRouteInformer) Informer() cache.SharedIndexInformer {
-	return f.factory.InformerFor(&apisv1alpha2.UDPRoute{}, f.defaultInformer)
+	return f.factory.InformerFor(&gatewayapiapisv1alpha2.UDPRoute{}, f.defaultInformer)
 }
 
-func (f *uDPRouteInformer) Lister() v1alpha2.UDPRouteLister {
-	return v1alpha2.NewUDPRouteLister(f.Informer().GetIndexer())
+func (f *uDPRouteInformer) Lister() apisv1alpha2.UDPRouteLister {
+	return apisv1alpha2.NewUDPRouteLister(f.Informer().GetIndexer())
 }

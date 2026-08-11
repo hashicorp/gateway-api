@@ -49,9 +49,31 @@ Session.vim
 .vscode
 /www/test_out
 .*.timestamp
-/site
-admission
+go.work.sum
+/tmp
+/conformance.test
+.protoc_cache
 
 /cache
 .venv/
 release/
+site-src/reference/spec.md
+site-src/reference/specx.md
+site-src/reference/**/spec.md
+site-src/reference/**/specx.md
+temp_test_convert_links
+site/static/wizard/main.wasm
+site/static/wizard/wasm_exec.js
+site/static/wizard/data/*
+
+.lycheecache
+
+# Local Netlify folder
+.netlify
+
+.gocache/
+.hugocache/
+
+# AI tools
+.claude
+.codex

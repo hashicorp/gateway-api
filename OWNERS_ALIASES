@@ -4,27 +4,52 @@
 aliases:
   # Reference: https://github.com/kubernetes/org/blob/main/OWNERS_ALIASES
   sig-network-leads:
-    - caseydavenport
-    - dcbw
+    - aojea
+    - danwinship
     - thockin
 
   # Reference: https://github.com/kubernetes/org/blob/main/config/kubernetes-sigs/sig-network/teams.yaml
-  gateway-api-admins:
-    - bowei
-    - thockin
-
   gateway-api-maintainers:
-    - bowei
-    - hbagdi
+    - rikatz
     - robscott
-    - shaneutt
     - youngnick
+
+  emeritus-gateway-api-maintainers:
+    - bowei
+    - danehans
+    - hbagdi
+    - jpeach
+    - mlavacca
+    - shaneutt
 
   gateway-api-mesh-leads:
     - howardjohn
-    - keithmattix
     - mikemorris
+    - kflynn
+    - LiorLieberman
 
-  emeritus-gateway-api-maintainers:
-    - danehans
-    - jpeach
+  emeritus-gateway-api-mesh-leads:
+    - keithmattix
+
+  gateway-api-conformance-reviewers:
+    - candita
+    - davidjumani
+    - kl52752
+    - snorwin
+
+  gateway-api-conformance-approvers:
+    - LiorLieberman
+
+  gateway-api-gep-reviewers:
+    - candita
+    - davidjumani
+    - gcs278
+    - kflynn
+    - kl52752
+    - LiorLieberman
+    - snorwin
+
+  gateway-api-doc-approvers:
+    - candita
+    - mikemorris
+    - kflynn

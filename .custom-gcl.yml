@@ -1,0 +1,9 @@
+# Copyright IBM Corp. 2019, 2022
+# SPDX-License-Identifier: Apache-2.0
+
+version: v2.8.0
+name: golangci-kube-api-linter
+destination: ./bin
+plugins:
+- module: 'sigs.k8s.io/kube-api-linter'
+  version: 'v0.0.0-20260423112246-3fa174937a6b' # Pin to a commit while there's no tag

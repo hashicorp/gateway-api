@@ -1,0 +1,17 @@
+# Copyright IBM Corp. 2019, 2022
+# SPDX-License-Identifier: Apache-2.0
+
+#$ Used in:
+#$ - docs/concepts/security.md
+apiVersion: gateway.networking.k8s.io/v1
+kind: ReferenceGrant
+metadata:
+  name: allow-prod-traffic
+spec:
+  from:
+  - group: gateway.networking.k8s.io
+    kind: HTTPRoute
+    namespace: prod
+  to:
+  - group: ""
+    kind: Service

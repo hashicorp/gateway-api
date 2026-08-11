@@ -19,24 +19,25 @@ limitations under the License.
 package v1beta1
 
 import (
-	"context"
+	context "context"
 	time "time"
 
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	runtime "k8s.io/apimachinery/pkg/runtime"
+	schema "k8s.io/apimachinery/pkg/runtime/schema"
 	watch "k8s.io/apimachinery/pkg/watch"
 	cache "k8s.io/client-go/tools/cache"
-	apisv1beta1 "sigs.k8s.io/gateway-api/apis/v1beta1"
+	gatewayapiapisv1beta1 "sigs.k8s.io/gateway-api/apis/v1beta1"
 	versioned "sigs.k8s.io/gateway-api/pkg/client/clientset/versioned"
 	internalinterfaces "sigs.k8s.io/gateway-api/pkg/client/informers/externalversions/internalinterfaces"
-	v1beta1 "sigs.k8s.io/gateway-api/pkg/client/listers/apis/v1beta1"
+	apisv1beta1 "sigs.k8s.io/gateway-api/pkg/client/listers/apis/v1beta1"
 )
 
 // GatewayClassInformer provides access to a shared informer and lister for
 // GatewayClasses.
 type GatewayClassInformer interface {
 	Informer() cache.SharedIndexInformer
-	Lister() v1beta1.GatewayClassLister
+	Lister() apisv1beta1.GatewayClassLister
 }
 
 type gatewayClassInformer struct {
@@ -48,42 +49,67 @@ type gatewayClassInformer struct {
 // Always prefer using an informer factory to get a shared informer instead of getting an independent
 // one. This reduces memory footprint and number of connections to the server.
 func NewGatewayClassInformer(client versioned.Interface, resyncPeriod time.Duration, indexers cache.Indexers) cache.SharedIndexInformer {
-	return NewFilteredGatewayClassInformer(client, resyncPeriod, indexers, nil)
+	return NewGatewayClassInformerWithOptions(client, internalinterfaces.InformerOptions{ResyncPeriod: resyncPeriod, Indexers: indexers})
 }
 
 // NewFilteredGatewayClassInformer constructs a new informer for GatewayClass type.
 // Always prefer using an informer factory to get a shared informer instead of getting an independent
 // one. This reduces memory footprint and number of connections to the server.
 func NewFilteredGatewayClassInformer(client versioned.Interface, resyncPeriod time.Duration, indexers cache.Indexers, tweakListOptions internalinterfaces.TweakListOptionsFunc) cache.SharedIndexInformer {
-	return cache.NewSharedIndexInformer(
-		&cache.ListWatch{
-			ListFunc: func(options v1.ListOptions) (runtime.Object, error) {
+	return NewGatewayClassInformerWithOptions(client, internalinterfaces.InformerOptions{ResyncPeriod: resyncPeriod, Indexers: indexers, TweakListOptions: tweakListOptions})
+}
+
+// NewGatewayClassInformerWithOptions constructs a new informer for GatewayClass type with additional options.
+// Always prefer using an informer factory to get a shared informer instead of getting an independent
+// one. This reduces memory footprint and number of connections to the server.
+func NewGatewayClassInformerWithOptions(client versioned.Interface, options internalinterfaces.InformerOptions) cache.SharedIndexInformer {
+	gvr := schema.GroupVersionResource{Group: "gateway.networking.k8s.io", Version: "v1beta1", Resource: "gatewayclasss"}
+	identifier := options.InformerName.WithResource(gvr)
+	tweakListOptions := options.TweakListOptions
+	return cache.NewSharedIndexInformerWithOptions(
+		cache.ToListWatcherWithWatchListSemantics(&cache.ListWatch{
+			ListFunc: func(opts v1.ListOptions) (runtime.Object, error) {
 				if tweakListOptions != nil {
-					tweakListOptions(&options)
+					tweakListOptions(&opts)
 				}
-				return client.GatewayV1beta1().GatewayClasses().List(context.TODO(), options)
+				return client.GatewayV1beta1().GatewayClasses().List(context.Background(), opts)
 			},
-			WatchFunc: func(options v1.ListOptions) (watch.Interface, error) {
+			WatchFunc: func(opts v1.ListOptions) (watch.Interface, error) {
 				if tweakListOptions != nil {
-					tweakListOptions(&options)
+					tweakListOptions(&opts)
 				}
-				return client.GatewayV1beta1().GatewayClasses().Watch(context.TODO(), options)
+				return client.GatewayV1beta1().GatewayClasses().Watch(context.Background(), opts)
 			},
+			ListWithContextFunc: func(ctx context.Context, opts v1.ListOptions) (runtime.Object, error) {
+				if tweakListOptions != nil {
+					tweakListOptions(&opts)
+				}
+				return client.GatewayV1beta1().GatewayClasses().List(ctx, opts)
+			},
+			WatchFuncWithContext: func(ctx context.Context, opts v1.ListOptions) (watch.Interface, error) {
+				if tweakListOptions != nil {
+					tweakListOptions(&opts)
+				}
+				return client.GatewayV1beta1().GatewayClasses().Watch(ctx, opts)
+			},
+		}, client),
+		&gatewayapiapisv1beta1.GatewayClass{},
+		cache.SharedIndexInformerOptions{
+			ResyncPeriod: options.ResyncPeriod,
+			Indexers:     options.Indexers,
+			Identifier:   identifier,
 		},
-		&apisv1beta1.GatewayClass{},
-		resyncPeriod,
-		indexers,
 	)
 }
 
 func (f *gatewayClassInformer) defaultInformer(client versioned.Interface, resyncPeriod time.Duration) cache.SharedIndexInformer {
-	return NewFilteredGatewayClassInformer(client, resyncPeriod, cache.Indexers{cache.NamespaceIndex: cache.MetaNamespaceIndexFunc}, f.tweakListOptions)
+	return NewGatewayClassInformerWithOptions(client, internalinterfaces.InformerOptions{ResyncPeriod: resyncPeriod, Indexers: cache.Indexers{cache.NamespaceIndex: cache.MetaNamespaceIndexFunc}, InformerName: f.factory.InformerName(), TweakListOptions: f.tweakListOptions})
 }
 
 func (f *gatewayClassInformer) Informer() cache.SharedIndexInformer {
-	return f.factory.InformerFor(&apisv1beta1.GatewayClass{}, f.defaultInformer)
+	return f.factory.InformerFor(&gatewayapiapisv1beta1.GatewayClass{}, f.defaultInformer)
 }
 
-func (f *gatewayClassInformer) Lister() v1beta1.GatewayClassLister {
-	return v1beta1.NewGatewayClassLister(f.Informer().GetIndexer())
+func (f *gatewayClassInformer) Lister() apisv1beta1.GatewayClassLister {
+	return apisv1beta1.NewGatewayClassLister(f.Informer().GetIndexer())
 }

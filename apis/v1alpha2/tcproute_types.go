@@ -18,26 +18,31 @@ package v1alpha2
 
 import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+
+	v1 "sigs.k8s.io/gateway-api/apis/v1"
 )
 
 // +genclient
 // +kubebuilder:object:root=true
 // +kubebuilder:resource:categories=gateway-api
 // +kubebuilder:subresource:status
-// +kubebuilder:storageversion
 // +kubebuilder:printcolumn:name="Age",type=date,JSONPath=`.metadata.creationTimestamp`
+// +kubebuilder:deprecatedversion:warning="The v1alpha2 version of TCPRoute has been deprecated and will be removed in a future release of the API. Please upgrade to v1."
 
 // TCPRoute provides a way to route TCP requests. When combined with a Gateway
 // listener, it can be used to forward connections on the port specified by the
 // listener to a set of backends specified by the TCPRoute.
 type TCPRoute struct {
-	metav1.TypeMeta   `json:",inline"`
+	metav1.TypeMeta `json:",inline"`
+	// +optional
 	metav1.ObjectMeta `json:"metadata,omitempty"`
 
 	// Spec defines the desired state of TCPRoute.
+	// +required
 	Spec TCPRouteSpec `json:"spec"`
 
 	// Status defines the current state of TCPRoute.
+	// +optional
 	Status TCPRouteStatus `json:"status,omitempty"`
 }
 
@@ -47,35 +52,19 @@ type TCPRouteSpec struct {
 
 	// Rules are a list of TCP matchers and actions.
 	//
+	// +required
+	// +listType=atomic
 	// +kubebuilder:validation:MinItems=1
 	// +kubebuilder:validation:MaxItems=16
-	Rules []TCPRouteRule `json:"rules"`
+	// <gateway:experimental:validation:XValidation:message="Rule name must be unique within the route",rule="self.all(l1, !has(l1.name) || self.exists_one(l2, has(l2.name) && l1.name == l2.name))">
+	Rules []TCPRouteRule `json:"rules,omitempty"`
 }
 
 // TCPRouteStatus defines the observed state of TCPRoute
-type TCPRouteStatus struct {
-	RouteStatus `json:",inline"`
-}
+type TCPRouteStatus v1.TCPRouteStatus
 
 // TCPRouteRule is the configuration for a given rule.
-type TCPRouteRule struct {
-	// BackendRefs defines the backend(s) where matching requests should be
-	// sent. If unspecified or invalid (refers to a non-existent resource or a
-	// Service with no endpoints), the underlying implementation MUST actively
-	// reject connection attempts to this backend. Connection rejections must
-	// respect weight; if an invalid backend is requested to have 80% of
-	// connections, then 80% of connections must be rejected instead.
-	//
-	// Support: Core for Kubernetes Service
-	//
-	// Support: Implementation-specific for any other resource
-	//
-	// Support for weight: Extended
-	//
-	// +kubebuilder:validation:MinItems=1
-	// +kubebuilder:validation:MaxItems=16
-	BackendRefs []BackendRef `json:"backendRefs,omitempty"`
-}
+type TCPRouteRule v1.TCPRouteRule
 
 // +kubebuilder:object:root=true
 
